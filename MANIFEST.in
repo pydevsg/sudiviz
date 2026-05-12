@@ -1,0 +1,10 @@
+# Include
+include LICENSE
+include README.md
+include pyproject.toml
+recursive-include sudiviz *.py *.html *.css *.js
+
+# Exclude sensitive/personal files
+exclude LINKEDIN_POST.md
+prune .claude
+prune docs/demo-broken-alb.md

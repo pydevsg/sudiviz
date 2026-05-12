@@ -1,0 +1,27 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.env
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.png
+!docs/**/*.png
+sudiviz.png
+.DS_Store
+
+# Claude Code local settings (contains machine-specific paths)
+.claude/
+
+# Personal/marketing content
+LINKEDIN_POST.md
+
+# Demo docs with real AWS resources
+docs/demo-broken-alb.md
