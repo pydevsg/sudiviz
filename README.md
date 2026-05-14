@@ -43,6 +43,16 @@ One command to fix issues. Destructive operations require `--force`.
 
 ![Fix Apply](https://raw.githubusercontent.com/pydevsg/sudiviz/main/docs/images/sudiviz_apply_force_deleting_unused_security_group.png)
 
+### 🚦 Traffic Flow Animation
+Watch data flow through your infrastructure in real-time. Green pulses show healthy traffic paths, red pulses highlight broken connections — instantly spot where requests are failing.
+
+![Traffic Flow](https://raw.githubusercontent.com/pydevsg/sudiviz/main/docs/images/sudiviz_healthy_traffic_flow.png)
+
+### 🌡️ Health Heatmap
+Switch to heatmap mode to color-code your entire infrastructure by health status. Green = healthy, yellow = warning, red = unhealthy. Instantly identify problem areas at a glance.
+
+![Health Heatmap](https://raw.githubusercontent.com/pydevsg/sudiviz/main/docs/images/sudiviz_health_status.png)
+
 ---
 
 ## 🤔 Why sudiviz?
@@ -58,8 +68,11 @@ is highlighted in red dashed lines.
 | Terminal UI (Textual)                | ✅       | ❌             | ❌           |
 | Interactive web (Cytoscape.js)       | ✅       | ✅             | ✅           |
 | WebSocket real-time updates          | ✅       | ❌             | ❌           |
+| **Animated traffic flow**            | ✅       | ❌             | ❌           |
+| **Health heatmaps**                  | ✅       | ❌             | ❌           |
 | PNG export                           | ✅       | ✅             | ✅           |
 | Plain-English fix suggestions        | ✅       | ❌             | ❌           |
+| **Auto-fix with one command**        | ✅       | ❌             | ❌           |
 | Terraform drift detection            | ✅       | ❌             | ❌           |
 | **Orphan detection** (red dashed)    | ✅       | ❌             | ❌           |
 | ECS / EKS / RDS / Lambda / S3        | ✅       | ✅             | ✅           |
