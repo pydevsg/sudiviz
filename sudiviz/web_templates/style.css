@@ -25,17 +25,19 @@ html, body { margin: 0; height: 100vh; font-family: -apple-system, BlinkMacSyste
 #topbar .meta { display: flex; gap: 18px; font-size: 12px; color: #cbd5e1; font-family: ui-monospace, SFMono-Regular, monospace; }
 #topbar .actions { display: flex; gap: 8px; align-items: center; }
 
-#topbar button, #topbar .toggle {
+#topbar button, #topbar .toggle, #topbar select {
   background: #1e293b; color: #e2e8f0; border: 1px solid #334155;
   padding: 6px 12px; border-radius: 6px; font-size: 12px; cursor: pointer;
 }
-#topbar button:hover, #topbar .toggle:hover { background: #334155; }
+#topbar button:hover, #topbar .toggle:hover, #topbar select:hover { background: #334155; }
+#topbar select { padding-right: 8px; }
 #topbar button.active { background: var(--orphan); border-color: var(--orphan); color: #fff; }
 #topbar .toggle input { margin-right: 6px; }
 
 #layout {
   display: grid; grid-template-columns: 1fr 360px;
   height: calc(100vh - 49px);
+  position: relative;
 }
 
 #cy {
@@ -88,3 +90,19 @@ html, body { margin: 0; height: 100vh; font-family: -apple-system, BlinkMacSyste
 #cy .cy-orphan-pulse { animation: orphan-pulse 1.4s ease-in-out infinite; }
 
 .hidden { display: none !important; }
+
+/* Traffic flow animation overlay */
+#traffic-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Traffic toggle button active state */
+#trafficBtn.active {
+  background: var(--healthy) !important;
+  border-color: var(--healthy) !important;
+  color: #fff !important;
+}

@@ -25,32 +25,57 @@
       <label class="toggle"><input type="checkbox" id="autoRefresh" checked /> auto-refresh</label>
       <button id="refreshBtn" title="Manual refresh">↻ refresh</button>
       <button id="exportBtn" title="Export PNG">⤓ PNG</button>
+      <button id="trafficBtn" title="Toggle traffic animation">▶ traffic</button>
+      <select id="heatmapSelect" title="Heatmap mode">
+        <option value="default">Color: Default</option>
+        <option value="health">Color: Health</option>
+        <option value="orphan">Color: Orphan Risk</option>
+      </select>
       <button id="orphansBtn" title="Toggle orphans only">⚠ orphans</button>
     </div>
   </header>
 
   <main id="layout">
     <section id="cy"></section>
+    <canvas id="traffic-canvas"></canvas>
 
     <aside id="sidebar">
       <div class="panel" id="legend">
         <h3>Legend</h3>
-        <h4 style="margin:6px 0 2px;font-size:0.75em;color:#6b7280">Health</h4>
-        <ul>
-          <li><span class="dot healthy"></span> Healthy</li>
-          <li><span class="dot warning"></span> Warning / Initial</li>
-          <li><span class="dot unhealthy"></span> Unhealthy</li>
-          <li><span class="dot unreachable"></span> Unknown / Unreachable</li>
-          <li><span class="dot orphan"></span> Orphan (red dashed)</li>
-        </ul>
-        <h4 style="margin:6px 0 2px;font-size:0.75em;color:#6b7280">Node types</h4>
-        <ul style="font-size:0.8em">
-          <li>⬡ EKS Cluster &nbsp; ⬜ EKS Node Group</li>
-          <li>⬛ ECS Cluster &nbsp; ⬜ ECS Service</li>
-          <li>⬜ ALB / NLB &nbsp; ⬜ Target Group</li>
-          <li>⬜ EC2 Instance &nbsp; ◇ Security Group</li>
-          <li>▽ Lambda &nbsp; ⬜ RDS &nbsp; ⬜ S3</li>
-        </ul>
+        <div id="legend-default">
+          <h4 style="margin:6px 0 2px;font-size:0.75em;color:#6b7280">Health</h4>
+          <ul>
+            <li><span class="dot healthy"></span> Healthy</li>
+            <li><span class="dot warning"></span> Warning / Initial</li>
+            <li><span class="dot unhealthy"></span> Unhealthy</li>
+            <li><span class="dot unreachable"></span> Unknown / Unreachable</li>
+            <li><span class="dot orphan"></span> Orphan (red dashed)</li>
+          </ul>
+          <h4 style="margin:6px 0 2px;font-size:0.75em;color:#6b7280">Node types</h4>
+          <ul style="font-size:0.8em">
+            <li>⬡ EKS Cluster &nbsp; ⬜ EKS Node Group</li>
+            <li>⬛ ECS Cluster &nbsp; ⬜ ECS Service</li>
+            <li>⬜ ALB / NLB &nbsp; ⬜ Target Group</li>
+            <li>⬜ EC2 Instance &nbsp; ◇ Security Group</li>
+            <li>▽ Lambda &nbsp; ⬜ RDS &nbsp; ⬜ S3</li>
+          </ul>
+        </div>
+        <div id="legend-health" style="display:none">
+          <h4 style="margin:6px 0 2px;font-size:0.75em;color:#6b7280">Health Heatmap</h4>
+          <ul>
+            <li><span class="dot" style="background:#dcfce7;border:2px solid #22c55e"></span> Healthy</li>
+            <li><span class="dot" style="background:#fef3c7;border:2px solid #eab308"></span> Warning / Initial</li>
+            <li><span class="dot" style="background:#fee2e2;border:2px solid #ef4444"></span> Unhealthy</li>
+            <li><span class="dot" style="background:#f3f4f6;border:2px solid #6b7280"></span> Unknown</li>
+          </ul>
+        </div>
+        <div id="legend-orphan" style="display:none">
+          <h4 style="margin:6px 0 2px;font-size:0.75em;color:#6b7280">Orphan Risk Heatmap</h4>
+          <ul>
+            <li><span class="dot" style="background:#dcfce7;border:2px solid #22c55e"></span> Connected (Safe)</li>
+            <li><span class="dot" style="background:#fee2e2;border:2px solid #dc2626"></span> Orphan (At Risk)</li>
+          </ul>
+        </div>
         <p style="font-size:0.75em;color:#6b7280;margin-top:4px">Ctrl+click a node to open AWS Console</p>
       </div>
 
@@ -336,6 +361,11 @@
         cy.add([...graph.nodes, ...graph.edges]);
       });
       cy.layout({ name: 'dagre', rankDir: 'LR', nodeSep: 60, rankSep: 120 }).run();
+      // Re-apply heatmap after refresh
+      const heatmapMode = document.getElementById('heatmapSelect').value;
+      if (heatmapMode !== 'default') {
+        setTimeout(() => applyHeatmap(heatmapMode), 100);
+      }
     }
 
     // WebSocket subscription for live updates. The server pushes a JSON
@@ -382,6 +412,197 @@
     setInterval(() => {
       if (document.getElementById('autoRefresh').checked) fetchGraph();
     }, 30_000);
+
+    // ---------------------------------------------------------------
+    // Traffic Animation System
+    // Draws animated dots flowing along edges to visualize data flow
+    // ---------------------------------------------------------------
+    let trafficEnabled = false;
+    let trafficAnimationId = null;
+    const trafficCanvas = document.getElementById('traffic-canvas');
+    const trafficCtx = trafficCanvas.getContext('2d');
+
+    // Particle class for traffic dots
+    class TrafficParticle {
+      constructor(edge) {
+        this.edge = edge;
+        this.progress = 0;
+        this.speed = 0.008 + Math.random() * 0.006; // Vary speed slightly
+        this.size = 4 + Math.random() * 2;
+        // Color based on edge health
+        const isOrphan = edge.hasClass('orphan');
+        this.color = isOrphan ? '#ef4444' : '#22c55e';
+      }
+
+      update() {
+        this.progress += this.speed;
+        return this.progress < 1;
+      }
+
+      draw(ctx) {
+        const source = this.edge.source();
+        const target = this.edge.target();
+        if (!source || !target) return;
+
+        const sourcePos = source.renderedPosition();
+        const targetPos = target.renderedPosition();
+
+        // Bezier curve to match Cytoscape edge
+        const midX = (sourcePos.x + targetPos.x) / 2;
+        const midY = (sourcePos.y + targetPos.y) / 2 - 20; // Slight curve
+
+        // Quadratic bezier point calculation
+        const t = this.progress;
+        const x = Math.pow(1-t, 2) * sourcePos.x + 2 * (1-t) * t * midX + Math.pow(t, 2) * targetPos.x;
+        const y = Math.pow(1-t, 2) * sourcePos.y + 2 * (1-t) * t * midY + Math.pow(t, 2) * targetPos.y;
+
+        // Draw glowing dot
+        ctx.beginPath();
+        ctx.arc(x, y, this.size, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        ctx.shadowColor = this.color;
+        ctx.shadowBlur = 8;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    let particles = [];
+    let lastSpawnTime = 0;
+
+    function resizeTrafficCanvas() {
+      const cyContainer = document.getElementById('cy');
+      trafficCanvas.width = cyContainer.offsetWidth;
+      trafficCanvas.height = cyContainer.offsetHeight;
+    }
+
+    function spawnParticles() {
+      if (!cy) return;
+      const now = Date.now();
+      if (now - lastSpawnTime < 400) return; // Spawn every 400ms
+      lastSpawnTime = now;
+
+      cy.edges().forEach(edge => {
+        if (!edge.visible()) return;
+        // Random chance to spawn on each edge
+        if (Math.random() < 0.3) {
+          particles.push(new TrafficParticle(edge));
+        }
+      });
+    }
+
+    function animateTraffic() {
+      if (!trafficEnabled) return;
+
+      trafficCtx.clearRect(0, 0, trafficCanvas.width, trafficCanvas.height);
+
+      spawnParticles();
+
+      // Update and draw particles
+      particles = particles.filter(p => {
+        const alive = p.update();
+        if (alive) p.draw(trafficCtx);
+        return alive;
+      });
+
+      trafficAnimationId = requestAnimationFrame(animateTraffic);
+    }
+
+    function toggleTraffic() {
+      trafficEnabled = !trafficEnabled;
+      document.getElementById('trafficBtn').classList.toggle('active', trafficEnabled);
+
+      if (trafficEnabled) {
+        resizeTrafficCanvas();
+        trafficCanvas.style.display = 'block';
+        particles = [];
+        animateTraffic();
+      } else {
+        cancelAnimationFrame(trafficAnimationId);
+        trafficCtx.clearRect(0, 0, trafficCanvas.width, trafficCanvas.height);
+        trafficCanvas.style.display = 'none';
+        particles = [];
+      }
+    }
+
+    document.getElementById('trafficBtn').addEventListener('click', toggleTraffic);
+    window.addEventListener('resize', () => {
+      if (trafficEnabled) resizeTrafficCanvas();
+    });
+
+    // Hide canvas initially
+    trafficCanvas.style.display = 'none';
+
+    // ---------------------------------------------------------------
+    // Heatmap System
+    // Colors nodes based on selected metric: health, orphan risk, etc.
+    // ---------------------------------------------------------------
+    const heatmapColors = {
+      // Health gradient: healthy -> warning -> unhealthy
+      health: {
+        healthy: { bg: '#dcfce7', border: '#22c55e' },    // Green
+        warning: { bg: '#fef3c7', border: '#eab308' },    // Yellow
+        initial: { bg: '#fef3c7', border: '#eab308' },    // Yellow
+        draining: { bg: '#fef3c7', border: '#eab308' },   // Yellow
+        unhealthy: { bg: '#fee2e2', border: '#ef4444' },  // Red
+        unknown: { bg: '#f3f4f6', border: '#6b7280' },    // Gray
+        unused: { bg: '#f3f4f6', border: '#6b7280' },     // Gray
+      },
+      // Orphan risk: safe -> at risk
+      orphan: {
+        safe: { bg: '#dcfce7', border: '#22c55e' },       // Green - not orphan
+        risk: { bg: '#fee2e2', border: '#dc2626' },       // Red - orphan
+      }
+    };
+
+    function applyHeatmap(mode) {
+      if (!cy) return;
+
+      cy.nodes().forEach(node => {
+        const data = node.data();
+        let bgColor, borderColor;
+
+        if (mode === 'default') {
+          // Reset to default kind-based colors
+          node.removeClass('heatmap-node');
+          node.style({
+            'background-color': null,
+            'border-color': null,
+          });
+          return;
+        }
+
+        if (mode === 'health') {
+          const health = (data.health || 'unknown').toLowerCase();
+          const colors = heatmapColors.health[health] || heatmapColors.health.unknown;
+          bgColor = colors.bg;
+          borderColor = colors.border;
+        }
+
+        if (mode === 'orphan') {
+          const isOrphan = data.orphan === true;
+          const colors = isOrphan ? heatmapColors.orphan.risk : heatmapColors.orphan.safe;
+          bgColor = colors.bg;
+          borderColor = colors.border;
+        }
+
+        node.addClass('heatmap-node');
+        node.style({
+          'background-color': bgColor,
+          'border-color': borderColor,
+          'border-width': 3,
+        });
+      });
+    }
+
+    document.getElementById('heatmapSelect').addEventListener('change', (e) => {
+      const mode = e.target.value;
+      applyHeatmap(mode);
+      // Update legend visibility
+      document.getElementById('legend-default').style.display = mode === 'default' ? 'block' : 'none';
+      document.getElementById('legend-health').style.display = mode === 'health' ? 'block' : 'none';
+      document.getElementById('legend-orphan').style.display = mode === 'orphan' ? 'block' : 'none';
+    });
 
     fetchGraph();
     connectWs();
