@@ -39,6 +39,7 @@ sudiviz fix --apply
 | **Traffic Animation** | Visualize request flow with animated pulses |
 | **Health Heatmaps** | Color-code infrastructure by health status |
 | **Dark/Light Mode** | Toggle theme in web UI |
+| **Cluster Grouping** | Group resources by service type (Load Balancers, ECS, Security, etc.) |
 | **Terraform Drift** | Compare live AWS vs Terraform state |
 | **Multi-Service** | ALB, EC2, ECS, EKS, RDS, Lambda, S3, Security Groups |
 
@@ -133,6 +134,9 @@ sudiviz drift --tfstate tfstate.json --json
 ### Health Heatmap
 ![Heatmap](https://raw.githubusercontent.com/pydevsg/sudiviz/main/docs/images/sudiviz_health_status.png)
 
+### Cluster Grouping (Dark Mode)
+![Cluster](https://raw.githubusercontent.com/pydevsg/sudiviz/main/docs/images/sudiviz_cluster_dark_mode.png)
+
 </details>
 
 ---
@@ -145,6 +149,7 @@ sudiviz drift --tfstate tfstate.json --json
 | Auto-fix | ✅ | ❌ | ❌ |
 | Traffic animation | ✅ | ❌ | ❌ |
 | Health heatmaps | ✅ | ❌ | ❌ |
+| Cluster grouping | ✅ | ❌ | ❌ |
 | Terraform drift | ✅ | ❌ | ❌ |
 | Orphan detection | ✅ | ❌ | ❌ |
 | Free & open source | ✅ MIT | $29/mo | $49/mo |

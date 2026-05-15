@@ -154,3 +154,10 @@ html, body { margin: 0; height: 100vh; font-family: -apple-system, BlinkMacSyste
   font-size: 14px;
   min-width: 36px;
 }
+
+/* Cluster toggle button active state */
+#clusterBtn.active {
+  background: #6366f1 !important;
+  border-color: #6366f1 !important;
+  color: #fff !important;
+}

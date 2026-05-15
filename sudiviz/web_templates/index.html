@@ -32,6 +32,7 @@
         <option value="orphan">Color: Orphan Risk</option>
       </select>
       <button id="orphansBtn" title="Toggle orphans only">⚠ orphans</button>
+      <button id="clusterBtn" title="Toggle cluster grouping">⊞ cluster</button>
       <button id="themeBtn" title="Toggle dark/light theme">🌙</button>
     </div>
   </header>
@@ -682,6 +683,175 @@
       isDarkMode = !isDarkMode;
       applyTheme(isDarkMode);
     });
+
+    // ---------------------------------------------------------------
+    // Cluster Grouping
+    // Groups nodes by service type into collapsible parent containers
+    // ---------------------------------------------------------------
+    let clusterMode = false;
+    let originalGraph = null;
+
+    const clusterConfig = {
+      'Load Balancers': ['alb', 'target_group', 'instance'],
+      'ECS': ['ecs_cluster', 'ecs_service'],
+      'EKS': ['eks_cluster', 'eks_nodegroup'],
+      'Database': ['rds'],
+      'Serverless': ['lambda'],
+      'Storage': ['s3'],
+      'Security': ['security_group'],
+      'Orphans': [] // Special: nodes with orphan=true
+    };
+
+    const clusterColors = {
+      'Load Balancers': { bg: '#1e3a8a', border: '#3b82f6' },
+      'ECS': { bg: '#831843', border: '#ec4899' },
+      'EKS': { bg: '#1e3a8a', border: '#3b82f6' },
+      'Database': { bg: '#854d0e', border: '#eab308' },
+      'Serverless': { bg: '#14532d', border: '#22c55e' },
+      'Storage': { bg: '#581c87', border: '#a855f7' },
+      'Security': { bg: '#78350f', border: '#f59e0b' },
+      'Orphans': { bg: '#7f1d1d', border: '#ef4444' }
+    };
+
+    function getClusterForNode(node) {
+      const data = node.data();
+
+      // Check if orphan first
+      if (data.orphan === true) {
+        return 'Orphans';
+      }
+
+      const kind = data.kind;
+      for (const [cluster, kinds] of Object.entries(clusterConfig)) {
+        if (kinds.includes(kind)) {
+          return cluster;
+        }
+      }
+      return null;
+    }
+
+    function applyClusterGrouping() {
+      if (!cy || !lastGraph) return;
+
+      // Store original for toggle off
+      if (!originalGraph) {
+        originalGraph = JSON.parse(JSON.stringify(lastGraph));
+      }
+
+      // Find which clusters have nodes
+      const activeClusters = new Set();
+      cy.nodes().forEach(node => {
+        const cluster = getClusterForNode(node);
+        if (cluster) activeClusters.add(cluster);
+      });
+
+      // Add parent nodes for each active cluster
+      const parentNodes = [];
+      const dark = isDarkMode;
+
+      activeClusters.forEach(clusterName => {
+        const colors = clusterColors[clusterName];
+        parentNodes.push({
+          group: 'nodes',
+          data: {
+            id: `cluster-${clusterName}`,
+            label: clusterName,
+            isCluster: true
+          },
+          classes: 'cluster-parent'
+        });
+      });
+
+      // Add parent nodes to graph
+      cy.add(parentNodes);
+
+      // Assign children to parents
+      cy.nodes().forEach(node => {
+        if (node.data('isCluster')) return;
+        const cluster = getClusterForNode(node);
+        if (cluster) {
+          node.move({ parent: `cluster-${cluster}` });
+        }
+      });
+
+      // Style cluster parents
+      cy.style()
+        .selector('.cluster-parent')
+        .style({
+          'shape': 'round-rectangle',
+          'background-color': dark ? '#1e293b' : '#f1f5f9',
+          'background-opacity': 0.8,
+          'border-width': 2,
+          'border-color': dark ? '#475569' : '#cbd5e1',
+          'border-style': 'dashed',
+          'label': 'data(label)',
+          'text-valign': 'top',
+          'text-halign': 'center',
+          'text-margin-y': 10,
+          'font-size': 14,
+          'font-weight': 'bold',
+          'color': dark ? '#f8fafc' : '#1f2937',
+          'padding': '30px',
+          'min-width': '200px',
+          'min-height': '100px'
+        })
+        .update();
+
+      // Apply specific cluster colors
+      activeClusters.forEach(clusterName => {
+        const colors = clusterColors[clusterName];
+        cy.style()
+          .selector(`#cluster-${clusterName.replace(/\s+/g, '-')}`)
+          .style({
+            'border-color': colors.border,
+          })
+          .update();
+      });
+
+      // Re-run layout to arrange clusters
+      cy.layout({
+        name: 'dagre',
+        rankDir: 'LR',
+        nodeSep: 40,
+        rankSep: 80,
+        padding: 50
+      }).run();
+    }
+
+    function removeClusterGrouping() {
+      if (!cy) return;
+
+      // Remove all cluster parent nodes
+      cy.nodes('.cluster-parent').remove();
+
+      // Move all nodes back to root
+      cy.nodes().forEach(node => {
+        if (!node.data('isCluster')) {
+          node.move({ parent: null });
+        }
+      });
+
+      // Re-run layout
+      cy.layout({
+        name: 'dagre',
+        rankDir: 'LR',
+        nodeSep: 60,
+        rankSep: 120
+      }).run();
+    }
+
+    function toggleClusterMode() {
+      clusterMode = !clusterMode;
+      document.getElementById('clusterBtn').classList.toggle('active', clusterMode);
+
+      if (clusterMode) {
+        applyClusterGrouping();
+      } else {
+        removeClusterGrouping();
+      }
+    }
+
+    document.getElementById('clusterBtn').addEventListener('click', toggleClusterMode);
 
     // Apply saved theme on load
     applyTheme(isDarkMode);
