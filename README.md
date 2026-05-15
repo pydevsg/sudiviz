@@ -127,8 +127,8 @@ sudiviz drift --tfstate tfstate.json --json
 ### Auto-Fix Preview
 ![Fix](https://raw.githubusercontent.com/pydevsg/sudiviz/main/docs/images/sudiviz_fix.png)
 
-### Traffic Flow Animation
-![Traffic](https://raw.githubusercontent.com/pydevsg/sudiviz/main/docs/images/sudiviz_healthy_traffic_flow.png)
+### Traffic Flow Animation (Dark Mode)
+![Traffic](https://raw.githubusercontent.com/pydevsg/sudiviz/main/docs/images/sudiviz_traffic_flow_in_dark-mode.png)
 
 ### Health Heatmap
 ![Heatmap](https://raw.githubusercontent.com/pydevsg/sudiviz/main/docs/images/sudiviz_health_status.png)
