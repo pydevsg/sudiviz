@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sudiviz"
-version = "0.3.2"
+version = "0.4.0"
 description = "Sufficient visibility into cloud infrastructure failures — live AWS topology + Terraform drift in one CLI."
 readme = "README.md"
 license = { text = "MIT" }

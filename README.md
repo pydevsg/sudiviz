@@ -19,9 +19,9 @@
 ## 📸 Screenshots
 
 ### 🌐 Web Visualization
-Interactive graph with live updates, node inspection, orphan detection (red dashed), and one-click AWS Console access.
+Interactive graph with live updates, node inspection, orphan detection (red dashed), and one-click AWS Console access. Supports dark/light theme toggle.
 
-![Web Graph](https://raw.githubusercontent.com/pydevsg/sudiviz/main/docs/images/sudiviz_live_topology_graph.png)
+![Web Graph](https://raw.githubusercontent.com/pydevsg/sudiviz/main/docs/images/sudiviz_dark_mode.png)
 
 ### 🖥️ Terminal TUI
 Full-featured terminal UI with keyboard navigation, health status, and orphan highlighting.

@@ -32,6 +32,7 @@
         <option value="orphan">Color: Orphan Risk</option>
       </select>
       <button id="orphansBtn" title="Toggle orphans only">⚠ orphans</button>
+      <button id="themeBtn" title="Toggle dark/light theme">🌙</button>
     </div>
   </header>
 
@@ -151,7 +152,7 @@
           { selector: 'node.eks_nodegroup',  style: { 'shape': 'round-rectangle', 'background-color': '#e0f2fe' } },
           { selector: 'node.rds',            style: { 'shape': 'barrel',          'background-color': '#fef9c3' } },
           { selector: 'node.lambda',         style: { 'shape': 'round-triangle',  'background-color': '#f0fdf4' } },
-          { selector: 'node.s3',             style: { 'shape': 'round-rectangle', 'background-color': '#fff7ed' } },
+          { selector: 'node.s3',             style: { 'shape': 'round-rectangle', 'background-color': '#ede9fe' } },
           { selector: 'node.healthy',        style: { 'border-color': '#22c55e' } },
           { selector: 'node.unhealthy',      style: { 'border-color': '#ef4444' } },
           { selector: 'node.warning, node.initial, node.draining', style: { 'border-color': '#eab308' } },
@@ -346,7 +347,13 @@
         const graph = await gRes.json();
         const diag  = await dRes.json();
         lastGraph = graph;
-        if (!cy) buildCy(graph); else replaceElements(graph);
+        if (!cy) {
+          buildCy(graph);
+          // Apply theme after initial build
+          if (isDarkMode) updateCyTheme(true);
+        } else {
+          replaceElements(graph);
+        }
         applyOrphanFilter();
         renderFixes(diag.fixes || []);
         updateMeta(graph.meta || {});
@@ -603,6 +610,81 @@
       document.getElementById('legend-health').style.display = mode === 'health' ? 'block' : 'none';
       document.getElementById('legend-orphan').style.display = mode === 'orphan' ? 'block' : 'none';
     });
+
+    // ---------------------------------------------------------------
+    // Dark/Light Theme Toggle
+    // ---------------------------------------------------------------
+    let isDarkMode = localStorage.getItem('sudiviz-theme') === 'dark';
+
+    function applyTheme(dark) {
+      document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      document.getElementById('themeBtn').textContent = dark ? '☀️' : '🌙';
+      localStorage.setItem('sudiviz-theme', dark ? 'dark' : 'light');
+
+      // Update Cytoscape node colors if graph exists
+      if (cy) {
+        updateCyTheme(dark);
+      }
+    }
+
+    function updateCyTheme(dark) {
+      const nodeBg = dark ? '#334155' : '#fff';
+      const nodeText = dark ? '#f8fafc' : '#111827';
+      const edgeColor = dark ? '#94a3b8' : '#9ca3af';
+      const edgeLabelColor = dark ? '#e2e8f0' : '#6b7280';
+      const edgeLabelBg = dark ? '#1e293b' : '#ffffff';
+
+      cy.style()
+        .selector('node')
+        .style({
+          'background-color': nodeBg,
+          'color': nodeText,
+        })
+        .selector('edge')
+        .style({
+          'line-color': edgeColor,
+          'target-arrow-color': edgeColor,
+          'color': edgeLabelColor,
+          'text-background-color': edgeLabelBg,
+        })
+        .update();
+
+      // Re-apply kind-specific colors (subtle for dark mode)
+      const kindColors = {
+        alb: dark ? '#1e3a8a' : '#dbeafe',           // Deep blue
+        target_group: dark ? '#164e63' : '#ecfeff',  // Subtle cyan/slate
+        instance: dark ? '#581c87' : '#f5f3ff',      // Deep purple
+        security_group: dark ? '#78350f' : '#fef3c7', // Warm brown/amber (diamond)
+        ecs_cluster: dark ? '#831843' : '#fce7f3',   // Deep pink
+        ecs_service: dark ? '#701a75' : '#fdf4ff',   // Deep fuchsia
+        eks_cluster: dark ? '#1e3a8a' : '#eff6ff',   // Deep blue
+        eks_nodegroup: dark ? '#0c4a6e' : '#e0f2fe', // Deep sky
+        rds: dark ? '#854d0e' : '#fef9c3',           // Deep yellow/amber
+        lambda: dark ? '#14532d' : '#f0fdf4',        // Deep green
+        s3: dark ? '#7c3aed' : '#ede9fe',            // Purple/violet (neutral, distinct)
+      };
+
+      Object.entries(kindColors).forEach(([kind, color]) => {
+        cy.style()
+          .selector(`node.${kind}`)
+          .style({ 'background-color': color })
+          .update();
+      });
+
+      // Re-apply heatmap if active
+      const heatmapMode = document.getElementById('heatmapSelect').value;
+      if (heatmapMode !== 'default') {
+        setTimeout(() => applyHeatmap(heatmapMode), 50);
+      }
+    }
+
+    document.getElementById('themeBtn').addEventListener('click', () => {
+      isDarkMode = !isDarkMode;
+      applyTheme(isDarkMode);
+    });
+
+    // Apply saved theme on load
+    applyTheme(isDarkMode);
 
     fetchGraph();
     connectWs();

@@ -1,8 +1,13 @@
 /* sudiviz web — minimal, info-dense styling. */
-:root {
+
+/* Light theme (default) */
+:root, [data-theme="light"] {
   --bg: #0f172a;
+  --bg-body: #f8fafc;
   --panel: #ffffff;
+  --panel-hover: #f9fafb;
   --text: #1f2937;
+  --text-secondary: #374151;
   --muted: #6b7280;
   --border: #e5e7eb;
   --healthy: #22c55e;
@@ -10,10 +15,37 @@
   --unhealthy: #ef4444;
   --orphan: #dc2626;
   --unreachable: #6b7280;
+  --cy-bg: #fff;
+  --cy-grid: #e5e7eb;
+  --node-bg: #fff;
+  --node-text: #111827;
+  --link-color: #2563eb;
+}
+
+/* Dark theme */
+[data-theme="dark"] {
+  --bg: #0f172a;
+  --bg-body: #0f172a;
+  --panel: #1e293b;
+  --panel-hover: #334155;
+  --text: #f8fafc;
+  --text-secondary: #e2e8f0;
+  --muted: #cbd5e1;
+  --border: #475569;
+  --healthy: #4ade80;
+  --warning: #fbbf24;
+  --unhealthy: #f87171;
+  --orphan: #ef4444;
+  --unreachable: #9ca3af;
+  --cy-bg: #0f172a;
+  --cy-grid: #1e293b;
+  --node-bg: #334155;
+  --node-text: #f8fafc;
+  --link-color: #60a5fa;
 }
 
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100vh; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--text); background: #f8fafc; }
+html, body { margin: 0; height: 100vh; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: var(--text); background: var(--bg-body); transition: background 0.3s, color 0.3s; }
 
 #topbar {
   display: flex; align-items: center; justify-content: space-between;
@@ -43,20 +75,22 @@ html, body { margin: 0; height: 100vh; font-family: -apple-system, BlinkMacSyste
 #cy {
   width: 100%; height: 100%;
   background:
-    linear-gradient(#fff, #fff),
-    radial-gradient(circle at 1px 1px, #e5e7eb 1px, transparent 0);
+    linear-gradient(var(--cy-bg), var(--cy-bg)),
+    radial-gradient(circle at 1px 1px, var(--cy-grid) 1px, transparent 0);
   background-size: auto, 16px 16px;
   background-blend-mode: multiply;
+  transition: background 0.3s;
 }
 
-#sidebar { border-left: 1px solid var(--border); background: #fff; overflow-y: auto; }
+#sidebar { border-left: 1px solid var(--border); background: var(--panel); overflow-y: auto; transition: background 0.3s, border-color 0.3s; }
 
-.panel { padding: 14px 16px; border-bottom: 1px solid var(--border); }
-.panel h3 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.panel { padding: 14px 16px; border-bottom: 1px solid var(--border); transition: border-color 0.3s; }
+.panel h3 { margin: 0 0 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; }
+.panel h4 { color: var(--muted); }
 .panel .hint { color: var(--muted); font-size: 12px; margin: 0; }
 
 #legend ul { list-style: none; margin: 0; padding: 0; }
-#legend li { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 3px 0; }
+#legend li { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 3px 0; color: var(--text); }
 .dot { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
 .dot.healthy { background: var(--healthy); }
 .dot.warning { background: var(--warning); }
@@ -65,18 +99,26 @@ html, body { margin: 0; height: 100vh; font-family: -apple-system, BlinkMacSyste
 .dot.orphan { background: var(--orphan); border: 2px dashed #fff; box-shadow: 0 0 0 1px var(--orphan); }
 
 #details table.kv { width: 100%; border-collapse: collapse; font-size: 12px; }
-#details table.kv th { text-align: left; color: var(--muted); padding: 3px 6px 3px 0; vertical-align: top; }
-#details table.kv td { padding: 3px 0; word-break: break-all; }
-#details a { color: #2563eb; font-size: 12px; }
+#details table.kv th { text-align: left; color: var(--muted); padding: 3px 6px 3px 0; vertical-align: top; font-weight: 500; }
+#details table.kv td { padding: 3px 0; word-break: break-all; color: var(--text); }
+#details table.kv code { background: var(--panel-hover); padding: 2px 4px; border-radius: 3px; font-size: 11px; }
+#details a { color: var(--link-color); font-size: 12px; text-decoration: none; }
+#details a:hover { text-decoration: underline; }
 
 #fix-list { list-style: none; padding: 0; margin: 0; }
-#fix-list .fix { padding: 8px; margin: 6px 0; border-radius: 6px; border-left: 3px solid var(--unreachable); background: #f9fafb; font-size: 12px; }
-#fix-list .fix.sev-critical { border-left-color: var(--unhealthy); background: #fef2f2; }
-#fix-list .fix.sev-warning  { border-left-color: var(--warning);   background: #fffbeb; }
-#fix-list .fix.sev-info     { border-left-color: #60a5fa;          background: #eff6ff; }
-#fix-list .fix strong { display: block; margin-bottom: 3px; }
-#fix-list .fix p { margin: 3px 0; color: var(--text); }
-#fix-list .fix code { font-size: 10px; color: var(--muted); }
+#fix-list .fix { padding: 8px; margin: 6px 0; border-radius: 6px; border-left: 3px solid var(--unreachable); background: var(--panel-hover); font-size: 12px; }
+#fix-list .fix.sev-critical { border-left-color: var(--unhealthy); }
+#fix-list .fix.sev-warning  { border-left-color: var(--warning); }
+#fix-list .fix.sev-info     { border-left-color: #60a5fa; }
+[data-theme="light"] #fix-list .fix.sev-critical { background: #fef2f2; }
+[data-theme="light"] #fix-list .fix.sev-warning  { background: #fffbeb; }
+[data-theme="light"] #fix-list .fix.sev-info     { background: #eff6ff; }
+[data-theme="dark"] #fix-list .fix.sev-critical { background: #450a0a; }
+[data-theme="dark"] #fix-list .fix.sev-warning  { background: #422006; }
+[data-theme="dark"] #fix-list .fix.sev-info     { background: #1e3a5f; }
+#fix-list .fix strong { display: block; margin-bottom: 3px; color: var(--text); }
+#fix-list .fix p { margin: 3px 0; color: var(--text-secondary); }
+#fix-list .fix code { font-size: 10px; color: var(--muted); background: var(--panel); padding: 2px 4px; border-radius: 3px; }
 #fix-list .hint.healthy { color: var(--healthy); }
 
 /* Pulse animation applied to orphan edges via Cytoscape class — uses CSS
@@ -105,4 +147,10 @@ html, body { margin: 0; height: 100vh; font-family: -apple-system, BlinkMacSyste
   background: var(--healthy) !important;
   border-color: var(--healthy) !important;
   color: #fff !important;
+}
+
+/* Theme toggle button */
+#themeBtn {
+  font-size: 14px;
+  min-width: 36px;
 }
