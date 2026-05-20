@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sudiviz"
-version = "0.7.0"
+version = "0.7.1"
 description = "Sufficient visibility into cloud infrastructure failures — live AWS topology + Terraform drift in one CLI."
 readme = "README.md"
 license = { text = "MIT" }
@@ -70,7 +70,16 @@ sudiviz = "sudiviz.cli:app"
 
 [tool.bandit]
 exclude_dirs = ["tests", "docs", ".venv"]
-skips = ["B101"]  # Skip assert warnings (OK in non-production code)
+skips = [
+    "B101",  # assert warnings (OK in non-production code)
+    "B110",  # try-except-pass (intentional for optional AWS API calls)
+    "B404",  # import subprocess (needed for CLI helpers)
+    "B603",  # subprocess without shell (controlled args, not user input)
+    "B605",  # os.system (only used for "clear" literal)
+    "B606",  # start_process_with_no_shell (os.startfile is safe)
+    "B607",  # partial executable path (open, xdg-open, say are system commands)
+    "B310",  # urllib.urlopen (controlled URL to transfer.sh)
+]
 
 [project.urls]
 Homepage = "https://github.com/pydevsg/sudiviz"

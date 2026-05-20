@@ -23,10 +23,10 @@ jobs:
         run: pip install bandit[toml]
 
       - name: Run Bandit scan
-        run: bandit -r sudiviz/ -f json -o bandit-report.json || true
+        run: bandit -c pyproject.toml -r sudiviz/ -f json -o bandit-report.json || true
 
       - name: Display results
-        run: bandit -r sudiviz/ -f txt
+        run: bandit -c pyproject.toml -r sudiviz/ -f txt
 
       - name: Upload Bandit report
         uses: actions/upload-artifact@v4
@@ -36,5 +36,4 @@ jobs:
           path: bandit-report.json
 
       - name: Fail on high severity
-        run: |
-          bandit -r sudiviz/ -ll -ii
+        run: bandit -c pyproject.toml -r sudiviz/ -ll -ii
