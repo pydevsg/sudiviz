@@ -18,6 +18,7 @@ from rich.table import Table
 from rich.tree import Tree
 
 from sudiviz.discovery.models import HealthStatus
+from sudiviz.discovery.costs import format_cost
 from sudiviz.utils.auth import console_url
 from sudiviz.utils.branding import Colors
 
@@ -54,6 +55,11 @@ def export_cytoscape_json(
         health = attrs.get("health", HealthStatus.UNKNOWN.value)
         is_orphan = bool(attrs.get("orphan"))
         classes = " ".join(filter(None, [kind, health, "orphan" if is_orphan else ""]))
+
+        # Get cost from metadata if available
+        monthly_cost = attrs.get("monthly_cost", 0)
+        cost_display = format_cost(monthly_cost) if monthly_cost else None
+
         nodes.append(
             {
                 "data": {
@@ -62,6 +68,8 @@ def export_cytoscape_json(
                     "kind": kind,
                     "health": health,
                     "orphan": is_orphan,
+                    "monthly_cost": monthly_cost,
+                    "cost_display": cost_display,
                     "console_url": console_url(kind, attrs.get("id", node_id), region),
                     "metadata": attrs.get("metadata", {}),
                 },

@@ -23,6 +23,15 @@ from typing import Any
 import networkx as nx
 
 from sudiviz.discovery.models import DiscoveryResult, HealthStatus
+from sudiviz.discovery.costs import (
+    estimate_lb_cost,
+    estimate_instance_cost,
+    estimate_rds_cost,
+    estimate_eks_cost,
+    estimate_lambda_cost,
+    estimate_s3_cost,
+    calculate_total_costs,
+)
 
 
 def build_graph(discovery: DiscoveryResult) -> nx.DiGraph:
@@ -56,6 +65,7 @@ def build_graph(discovery: DiscoveryResult) -> nx.DiGraph:
             dns_name=lb.dns_name,
             metadata=lb.model_dump(mode="json"),
             orphan=False,
+            monthly_cost=estimate_lb_cost(lb),
         )
         if lb.vpc_id and lb.vpc_id in g:
             g.add_edge(lb.arn, lb.vpc_id, relation="in_vpc", style="solid")
@@ -119,10 +129,12 @@ def build_graph(discovery: DiscoveryResult) -> nx.DiGraph:
 
     # Instances (may already exist as nodes from target group registration).
     for inst in discovery.instances:
+        cost = estimate_instance_cost(inst)
         if inst.instance_id in g:
             existing = g.nodes[inst.instance_id]
             existing["metadata"] = inst.model_dump(mode="json")
             existing["label"] = inst.tags.get("Name") or inst.instance_id
+            existing["monthly_cost"] = cost
         else:
             g.add_node(
                 inst.instance_id,
@@ -132,6 +144,7 @@ def build_graph(discovery: DiscoveryResult) -> nx.DiGraph:
                 id=inst.instance_id,
                 metadata=inst.model_dump(mode="json"),
                 orphan=False,
+                monthly_cost=cost,
             )
         for sg_id in inst.security_group_ids:
             g.add_edge(inst.instance_id, sg_id, relation="guarded_by", style="solid")
@@ -208,6 +221,7 @@ def build_graph(discovery: DiscoveryResult) -> nx.DiGraph:
             version=cluster.version,
             metadata=cluster.model_dump(mode="json", exclude={"node_groups"}),
             orphan=False,
+            monthly_cost=estimate_eks_cost(cluster),
         )
         if cluster.vpc_id and cluster.vpc_id in g:
             g.add_edge(cluster.arn, cluster.vpc_id, relation="in_vpc", style="solid")
@@ -243,6 +257,7 @@ def build_graph(discovery: DiscoveryResult) -> nx.DiGraph:
             status=db.status,
             metadata=db.model_dump(mode="json"),
             orphan=False,
+            monthly_cost=estimate_rds_cost(db),
         )
         if db.vpc_id and db.vpc_id in g:
             g.add_edge(db.arn, db.vpc_id, relation="in_vpc", style="solid")
@@ -262,6 +277,7 @@ def build_graph(discovery: DiscoveryResult) -> nx.DiGraph:
             runtime=fn.runtime,
             metadata=fn.model_dump(mode="json"),
             orphan=False,
+            monthly_cost=estimate_lambda_cost(fn),
         )
         if fn.vpc_id and fn.vpc_id in g:
             g.add_edge(fn.arn, fn.vpc_id, relation="in_vpc", style="solid")
@@ -288,6 +304,7 @@ def build_graph(discovery: DiscoveryResult) -> nx.DiGraph:
             encryption_enabled=bucket.encryption_enabled,
             metadata=bucket.model_dump(mode="json"),
             orphan=False,
+            monthly_cost=estimate_s3_cost(bucket),
         )
 
     return g

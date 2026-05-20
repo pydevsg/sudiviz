@@ -30,6 +30,7 @@
         <option value="default">Color: Default</option>
         <option value="health">Color: Health</option>
         <option value="orphan">Color: Orphan Risk</option>
+        <option value="cost">Color: Cost ($)</option>
       </select>
       <button id="orphansBtn" title="Toggle orphans only">⚠ orphans</button>
       <button id="clusterBtn" title="Toggle cluster grouping">⊞ cluster</button>
@@ -77,6 +78,16 @@
             <li><span class="dot" style="background:#dcfce7;border:2px solid #22c55e"></span> Connected (Safe)</li>
             <li><span class="dot" style="background:#fee2e2;border:2px solid #dc2626"></span> Orphan (At Risk)</li>
           </ul>
+        </div>
+        <div id="legend-cost" style="display:none">
+          <h4 style="margin:6px 0 2px;font-size:0.75em;color:#6b7280">Cost Heatmap ($/month)</h4>
+          <ul>
+            <li><span class="dot" style="background:#dcfce7;border:2px solid #22c55e"></span> Free / $0</li>
+            <li><span class="dot" style="background:#fef3c7;border:2px solid #eab308"></span> Low ($1-$50)</li>
+            <li><span class="dot" style="background:#fed7aa;border:2px solid #f97316"></span> Medium ($50-$200)</li>
+            <li><span class="dot" style="background:#fee2e2;border:2px solid #ef4444"></span> High ($200+)</li>
+          </ul>
+          <p id="total-cost" style="font-size:0.85em;font-weight:600;margin-top:8px;color:var(--text)"></p>
         </div>
         <p style="font-size:0.75em;color:#6b7280;margin-top:4px">Ctrl+click a node to open AWS Console</p>
       </div>
@@ -302,12 +313,17 @@
           break;
       }
 
+      // Format cost display
+      const costDisplay = d.cost_display || (d.monthly_cost ? `~$${d.monthly_cost.toFixed(0)}/mo` : 'Free');
+      const costStyle = d.monthly_cost > 100 ? 'color:#ef4444;font-weight:600' : (d.monthly_cost > 0 ? 'color:#eab308' : 'color:#22c55e');
+
       el.innerHTML = `
         <h3>${d.label}</h3>
         <table class="kv">
           <tr><th>Kind</th><td>${d.kind}</td></tr>
           <tr><th>Health</th><td>${d.health}</td></tr>
           <tr><th>Orphan</th><td>${d.orphan ? '<b style="color:#dc2626">YES</b>' : 'no'}</td></tr>
+          <tr><th>Est. Cost</th><td style="${costStyle}">${costDisplay}</td></tr>
           ${extra}
           <tr><th>ARN / ID</th><td><code style="font-size:0.7em;word-break:break-all">${d.id}</code></td></tr>
         </table>
@@ -566,6 +582,8 @@
     function applyHeatmap(mode) {
       if (!cy) return;
 
+      let totalCost = 0;
+
       cy.nodes().forEach(node => {
         const data = node.data();
         let bgColor, borderColor;
@@ -594,6 +612,21 @@
           borderColor = colors.border;
         }
 
+        if (mode === 'cost') {
+          const cost = data.monthly_cost || 0;
+          totalCost += cost;
+
+          if (cost === 0) {
+            bgColor = '#dcfce7'; borderColor = '#22c55e'; // Free - green
+          } else if (cost < 50) {
+            bgColor = '#fef3c7'; borderColor = '#eab308'; // Low - yellow
+          } else if (cost < 200) {
+            bgColor = '#fed7aa'; borderColor = '#f97316'; // Medium - orange
+          } else {
+            bgColor = '#fee2e2'; borderColor = '#ef4444'; // High - red
+          }
+        }
+
         node.addClass('heatmap-node');
         node.style({
           'background-color': bgColor,
@@ -601,6 +634,12 @@
           'border-width': 3,
         });
       });
+
+      // Update total cost display
+      const totalCostEl = document.getElementById('total-cost');
+      if (mode === 'cost' && totalCostEl) {
+        totalCostEl.textContent = `Est. Total: ~$${totalCost.toFixed(0)}/month`;
+      }
     }
 
     document.getElementById('heatmapSelect').addEventListener('change', (e) => {
@@ -610,6 +649,7 @@
       document.getElementById('legend-default').style.display = mode === 'default' ? 'block' : 'none';
       document.getElementById('legend-health').style.display = mode === 'health' ? 'block' : 'none';
       document.getElementById('legend-orphan').style.display = mode === 'orphan' ? 'block' : 'none';
+      document.getElementById('legend-cost').style.display = mode === 'cost' ? 'block' : 'none';
     });
 
     // ---------------------------------------------------------------
