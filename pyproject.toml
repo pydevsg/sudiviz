@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sudiviz"
-version = "0.6.0"
+version = "0.7.0"
 description = "Sufficient visibility into cloud infrastructure failures — live AWS topology + Terraform drift in one CLI."
 readme = "README.md"
 license = { text = "MIT" }
@@ -62,10 +62,15 @@ dev = [
     "pytest-asyncio>=0.23",
     "ruff>=0.5",
     "mypy>=1.8",
+    "bandit[toml]>=1.7",
 ]
 
 [project.scripts]
 sudiviz = "sudiviz.cli:app"
+
+[tool.bandit]
+exclude_dirs = ["tests", "docs", ".venv"]
+skips = ["B101"]  # Skip assert warnings (OK in non-production code)
 
 [project.urls]
 Homepage = "https://github.com/pydevsg/sudiviz"
