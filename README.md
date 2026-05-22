@@ -8,7 +8,7 @@
 
 🚀 Zero AI tokens | 💸 Zero cost | 🐍 Pure Python
 
-![Web Graph](https://raw.githubusercontent.com/pydevsg/sudiviz/main/docs/images/sudiviz_dark_mode.png)
+![Web Graph](https://raw.githubusercontent.com/pydevsg/sudiviz/main/docs/images/sudiviz_ingress_traffic_dark_mode.png)
 
 ---
 
