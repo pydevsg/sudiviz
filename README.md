@@ -1,5 +1,7 @@
 # 🔬 sudiviz
 
+[![Website](https://img.shields.io/badge/Website-sudiviz-blue?style=flat-square)](https://d2ewlh2csw2k2n.cloudfront.net) [![PyPI](https://img.shields.io/pypi/v/sudiviz?style=flat-square)](https://pypi.org/project/sudiviz/) [![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
+
 > *X-ray vision for your cloud infrastructure*
 
 **sudiviz** visualizes your live AWS infrastructure as an interactive graph. Auto-detects misconfigurations, unhealthy targets, and orphan resources — then fixes them with one command.
@@ -39,6 +41,7 @@ sudiviz fix --apply
 | **Traffic Animation** | Visualize request flow with animated pulses |
 | **Health Heatmaps** | Color-code infrastructure by health status |
 | **Cost Heatmap** | FinOps view — visualize estimated monthly costs per resource |
+| **Security Group Flows** | Visualize ingress/egress rules between security groups |
 | **Dark/Light Mode** | Toggle theme in web UI |
 | **Cluster Grouping** | Group resources by service type (Load Balancers, ECS, Security, etc.) |
 | **Terraform Drift** | Compare live AWS vs Terraform state |
@@ -85,6 +88,27 @@ sudiviz fix --apply --force    # Include destructive operations
 - RDS public accessibility
 - Orphan target groups (with `--force`)
 - Unused security groups (with `--force`)
+
+---
+
+## 🔒 Security
+
+sudiviz is built with security in mind. Every release is scanned for vulnerabilities.
+
+| Check | Status |
+|-------|--------|
+| **Bandit SAST** | ✅ No issues |
+| **XSS Protection** | ✅ HTML sanitization enabled |
+| **Dependency CVEs** | ✅ All patched |
+| **Hardcoded Secrets** | ✅ None |
+| **Shell Injection** | ✅ No `shell=True` |
+| **Code Injection** | ✅ No `eval()` |
+
+Run security scan locally:
+```bash
+pip install bandit[toml]
+bandit -c pyproject.toml -r sudiviz/
+```
 
 ---
 

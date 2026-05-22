@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import networkx as nx
 from rich.console import Console
@@ -17,8 +17,8 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.tree import Tree
 
-from sudiviz.discovery.models import HealthStatus
 from sudiviz.discovery.costs import format_cost
+from sudiviz.discovery.models import HealthStatus
 from sudiviz.utils.auth import console_url
 from sudiviz.utils.branding import Colors
 
@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 def export_cytoscape_json(
     graph: nx.DiGraph,
-    region: Optional[str] = None,
+    region: str | None = None,
 ) -> dict[str, list[dict]]:
     """Convert the NetworkX graph to Cytoscape.js elements format.
 
@@ -79,22 +79,52 @@ def export_cytoscape_json(
 
     for u, v, data in graph.edges(data=True):
         is_orphan = bool(data.get("orphan"))
-        classes = "orphan" if is_orphan else ""
-        # Inline style ensures dashed-red wins even if the user customizes the stylesheet.
+        relation = data.get("relation", "")
+
+        # Determine edge class based on relation type
+        classes_list = []
+        if is_orphan:
+            classes_list.append("orphan")
+        if relation in ("allows_ingress", "allows_egress"):
+            classes_list.append("sg-flow")
+            classes_list.append(f"sg-{data.get('direction', 'ingress')}")
+        classes = " ".join(classes_list)
+
+        # Color coding for security group flows
+        if relation == "allows_ingress":
+            line_color = "#3b82f6"  # Blue for ingress
+        elif relation == "allows_egress":
+            line_color = "#8b5cf6"  # Purple for egress
+        elif is_orphan:
+            line_color = Colors.ORPHAN
+        else:
+            line_color = data.get("color", Colors.HEALTHY)
+
         style = {
             "line-style": data.get("style", "solid"),
-            "line-color": data.get("color", Colors.HEALTHY if not is_orphan else Colors.ORPHAN),
-            "target-arrow-color": data.get("color", Colors.HEALTHY if not is_orphan else Colors.ORPHAN),
+            "line-color": line_color,
+            "target-arrow-color": line_color,
         }
+
+        # Build edge data with security group rule details
+        edge_data = {
+            "id": f"{u}__{v}",
+            "source": u,
+            "target": v,
+            "relation": relation,
+            "orphan": is_orphan,
+        }
+
+        # Add SG rule details if present
+        if relation in ("allows_ingress", "allows_egress"):
+            edge_data["protocol"] = data.get("protocol", "-1")
+            edge_data["from_port"] = data.get("from_port")
+            edge_data["to_port"] = data.get("to_port")
+            edge_data["direction"] = data.get("direction")
+
         edges.append(
             {
-                "data": {
-                    "id": f"{u}__{v}",
-                    "source": u,
-                    "target": v,
-                    "relation": data.get("relation", ""),
-                    "orphan": is_orphan,
-                },
+                "data": edge_data,
                 "classes": classes,
                 "style": style,
             }
@@ -127,7 +157,7 @@ _HEALTH_STYLE = {
 }
 
 
-def render_terminal(graph: nx.DiGraph, console: Optional[Console] = None) -> None:
+def render_terminal(graph: nx.DiGraph, console: Console | None = None) -> None:
     """Render the graph as a Rich tree, with red dashed branches for orphans."""
     console = console or Console()
 
@@ -230,7 +260,7 @@ def _edge_line(edge: dict, child_repr: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def render_diagnosis(diagnosis: Any, console: Optional[Console] = None) -> None:
+def render_diagnosis(diagnosis: Any, console: Console | None = None) -> None:
     """Print a Rich table of fix suggestions, sorted by severity."""
     console = console or Console()
     if not diagnosis.fixes:
@@ -260,7 +290,7 @@ def export_png(graph: nx.DiGraph, filename: str) -> Path:
     """
     try:
         return _export_png_via_graphviz(graph, filename)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("Graphviz export failed: %s", exc)
         raise
 
@@ -269,7 +299,7 @@ def _export_png_via_graphviz(graph: nx.DiGraph, filename: str) -> Path:
     """Use graphviz directly — works without the diagrams library."""
     try:
         import graphviz  # type: ignore
-    except ImportError as exc:  # noqa: F841
+    except ImportError as exc:
         raise RuntimeError(
             "graphviz package not installed. `pip install graphviz` and ensure the "
             "graphviz binary is on PATH."

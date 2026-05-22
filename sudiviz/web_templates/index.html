@@ -31,7 +31,9 @@
         <option value="health">Color: Health</option>
         <option value="orphan">Color: Orphan Risk</option>
         <option value="cost">Color: Cost ($)</option>
+        <option value="security">Color: Security</option>
       </select>
+      <button id="sgFlowBtn" title="Toggle SG flow edges">🔒 SG</button>
       <button id="orphansBtn" title="Toggle orphans only">⚠ orphans</button>
       <button id="clusterBtn" title="Toggle cluster grouping">⊞ cluster</button>
       <button id="themeBtn" title="Toggle dark/light theme">🌙</button>
@@ -318,22 +320,33 @@
       const costStyle = d.monthly_cost > 100 ? 'color:#ef4444;font-weight:600' : (d.monthly_cost > 0 ? 'color:#eab308' : 'color:#22c55e');
 
       el.innerHTML = `
-        <h3>${d.label}</h3>
+        <h3>${escapeHtml(d.label)}</h3>
         <table class="kv">
-          <tr><th>Kind</th><td>${d.kind}</td></tr>
-          <tr><th>Health</th><td>${d.health}</td></tr>
+          <tr><th>Kind</th><td>${escapeHtml(d.kind)}</td></tr>
+          <tr><th>Health</th><td>${escapeHtml(d.health)}</td></tr>
           <tr><th>Orphan</th><td>${d.orphan ? '<b style="color:#dc2626">YES</b>' : 'no'}</td></tr>
-          <tr><th>Est. Cost</th><td style="${costStyle}">${costDisplay}</td></tr>
+          <tr><th>Est. Cost</th><td style="${costStyle}">${escapeHtml(costDisplay)}</td></tr>
           ${extra}
-          <tr><th>ARN / ID</th><td><code style="font-size:0.7em;word-break:break-all">${d.id}</code></td></tr>
+          <tr><th>ARN / ID</th><td><code style="font-size:0.7em;word-break:break-all">${escapeHtml(d.id)}</code></td></tr>
         </table>
-        <p><a href="${d.console_url}" target="_blank">Open in AWS Console →</a></p>
+        <p><a href="${escapeHtml(d.console_url)}" target="_blank">Open in AWS Console →</a></p>
       `;
     }
 
     function row(label, value) {
       if (value === undefined || value === null || value === '') return '';
-      return `<tr><th>${label}</th><td>${value}</td></tr>`;
+      return `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(String(value))}</td></tr>`;
+    }
+
+    // Sanitize HTML to prevent XSS
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
     }
 
     function renderFixes(fixes) {
@@ -343,10 +356,10 @@
         return;
       }
       ul.innerHTML = fixes.map(f => `
-        <li class="fix sev-${f.severity}">
-          <strong>${f.title}</strong>
-          <p>${f.detail}</p>
-          ${f.resource_id ? `<code>${f.resource_id}</code>` : ''}
+        <li class="fix sev-${escapeHtml(f.severity)}">
+          <strong>${escapeHtml(f.title)}</strong>
+          <p>${escapeHtml(f.detail)}</p>
+          ${f.resource_id ? `<code>${escapeHtml(f.resource_id)}</code>` : ''}
         </li>
       `).join('');
     }
@@ -627,6 +640,14 @@
           }
         }
 
+        if (mode === 'security') {
+          if (data.kind === 'security_group') {
+            bgColor = '#fef3c7'; borderColor = '#f59e0b'; // Amber for SGs
+          } else {
+            bgColor = '#f3f4f6'; borderColor = '#9ca3af'; // Dim others
+          }
+        }
+
         node.addClass('heatmap-node');
         node.style({
           'background-color': bgColor,
@@ -651,6 +672,29 @@
       document.getElementById('legend-orphan').style.display = mode === 'orphan' ? 'block' : 'none';
       document.getElementById('legend-cost').style.display = mode === 'cost' ? 'block' : 'none';
     });
+
+    // ---------------------------------------------------------------
+    // Security Group Flow Toggle
+    // ---------------------------------------------------------------
+    let sgFlowEnabled = true;
+
+    function toggleSgFlows() {
+      sgFlowEnabled = !sgFlowEnabled;
+      document.getElementById('sgFlowBtn').classList.toggle('active', sgFlowEnabled);
+      if (!cy) return;
+      cy.edges().forEach(edge => {
+        const relation = edge.data('relation');
+        if (relation === 'allows_ingress' || relation === 'allows_egress') {
+          if (sgFlowEnabled) {
+            edge.removeClass('hidden');
+          } else {
+            edge.addClass('hidden');
+          }
+        }
+      });
+    }
+
+    document.getElementById('sgFlowBtn').addEventListener('click', toggleSgFlows);
 
     // ---------------------------------------------------------------
     // Dark/Light Theme Toggle

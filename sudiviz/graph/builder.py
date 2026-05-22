@@ -22,16 +22,15 @@ from typing import Any
 
 import networkx as nx
 
-from sudiviz.discovery.models import DiscoveryResult, HealthStatus
 from sudiviz.discovery.costs import (
-    estimate_lb_cost,
-    estimate_instance_cost,
-    estimate_rds_cost,
     estimate_eks_cost,
+    estimate_instance_cost,
     estimate_lambda_cost,
+    estimate_lb_cost,
+    estimate_rds_cost,
     estimate_s3_cost,
-    calculate_total_costs,
 )
+from sudiviz.discovery.models import DiscoveryResult, HealthStatus
 
 
 def build_graph(discovery: DiscoveryResult) -> nx.DiGraph:
@@ -151,6 +150,10 @@ def build_graph(discovery: DiscoveryResult) -> nx.DiGraph:
 
     # Security groups.
     for sg in discovery.security_groups:
+        # Count ingress/egress rules for summary
+        ingress_rules = [r for r in sg.rules if r.direction == "ingress"]
+        egress_rules = [r for r in sg.rules if r.direction == "egress"]
+
         if sg.sg_id in g:
             g.nodes[sg.sg_id].update(
                 kind="security_group",
@@ -159,6 +162,8 @@ def build_graph(discovery: DiscoveryResult) -> nx.DiGraph:
                 id=sg.sg_id,
                 metadata=sg.model_dump(mode="json"),
                 orphan=False,
+                ingress_count=len(ingress_rules),
+                egress_count=len(egress_rules),
             )
         else:
             g.add_node(
@@ -169,7 +174,41 @@ def build_graph(discovery: DiscoveryResult) -> nx.DiGraph:
                 id=sg.sg_id,
                 metadata=sg.model_dump(mode="json"),
                 orphan=False,
+                ingress_count=len(ingress_rules),
+                egress_count=len(egress_rules),
             )
+
+        # Add edges for SG-to-SG references (security group rule flows)
+        # Skip self-referencing rules (common in default SGs but not useful to visualize)
+        for rule in sg.rules:
+            for ref_sg_id in rule.referenced_sg_ids:
+                # Skip self-loops - they clutter the graph without adding insight
+                if ref_sg_id == sg.sg_id:
+                    continue
+                if rule.direction == "ingress":
+                    # Ingress: traffic flows FROM referenced SG INTO this SG
+                    g.add_edge(
+                        ref_sg_id,
+                        sg.sg_id,
+                        relation="allows_ingress",
+                        style="solid",
+                        protocol=rule.protocol,
+                        from_port=rule.from_port,
+                        to_port=rule.to_port,
+                        direction="ingress",
+                    )
+                else:
+                    # Egress: traffic flows FROM this SG TO referenced SG
+                    g.add_edge(
+                        sg.sg_id,
+                        ref_sg_id,
+                        relation="allows_egress",
+                        style="solid",
+                        protocol=rule.protocol,
+                        from_port=rule.from_port,
+                        to_port=rule.to_port,
+                        direction="egress",
+                    )
 
     # ECS clusters + services.
     for cluster in discovery.ecs_clusters:
