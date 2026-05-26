@@ -604,9 +604,11 @@
         if (mode === 'default') {
           // Reset to default kind-based colors
           node.removeClass('heatmap-node');
+          const dark = document.documentElement.getAttribute('data-theme') === 'dark';
           node.style({
             'background-color': null,
             'border-color': null,
+            'color': dark ? '#f8fafc' : '#111827',
           });
           return;
         }
@@ -653,6 +655,7 @@
           'background-color': bgColor,
           'border-color': borderColor,
           'border-width': 3,
+          'color': '#111827',
         });
       });
 
