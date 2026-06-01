@@ -42,6 +42,7 @@ sudiviz fix --apply
 | **Health Heatmaps** | Color-code infrastructure by health status |
 | **Cost Heatmap** | FinOps view — visualize estimated monthly costs per resource |
 | **Security Group Flows** | Visualize ingress/egress rules between security groups |
+| **CloudWatch Integration** | One-click links to metrics and logs for each resource |
 | **Dark/Light Mode** | Toggle theme in web UI |
 | **Cluster Grouping** | Group resources by service type (Load Balancers, ECS, Security, etc.) |
 | **Terraform Drift** | Compare live AWS vs Terraform state |
@@ -252,7 +253,7 @@ sudiviz/
 
 ## 📝 License
 
-MIT — see [LICENSE](LICENSE)
+GPL-3.0-or-later — see [LICENSE](LICENSE)
 
 ---
 

@@ -329,7 +329,11 @@
           ${extra}
           <tr><th>ARN / ID</th><td><code style="font-size:0.7em;word-break:break-all">${escapeHtml(d.id)}</code></td></tr>
         </table>
-        <p><a href="${escapeHtml(d.console_url)}" target="_blank">Open in AWS Console →</a></p>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;">
+          <a href="${escapeHtml(d.console_url)}" target="_blank" style="font-size:12px">📋 Console</a>
+          ${d.metrics_url ? `<a href="${escapeHtml(d.metrics_url)}" target="_blank" style="font-size:12px">📊 Metrics</a>` : ''}
+          ${d.logs_url ? `<a href="${escapeHtml(d.logs_url)}" target="_blank" style="font-size:12px">📜 Logs</a>` : ''}
+        </div>
       `;
     }
 
