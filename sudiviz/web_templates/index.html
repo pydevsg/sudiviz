@@ -9,8 +9,6 @@
   <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
-  <!-- html-to-image for the export-to-PNG button -->
-  <script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
 </head>
 <body>
   <header id="topbar">
@@ -24,7 +22,7 @@
     <div class="actions">
       <label class="toggle"><input type="checkbox" id="autoRefresh" checked /> auto-refresh</label>
       <button id="refreshBtn" title="Manual refresh">↻ refresh</button>
-      <button id="exportBtn" title="Export PNG">⤓ PNG</button>
+      <button id="logsBtn" title="Open CloudWatch Logs">📜 Logs</button>
       <button id="trafficBtn" title="Toggle traffic animation">▶ traffic</button>
       <select id="heatmapSelect" title="Heatmap mode">
         <option value="default">Color: Default</option>
@@ -440,13 +438,11 @@
       document.getElementById('orphansBtn').classList.toggle('active', orphanMode);
       applyOrphanFilter();
     });
-    document.getElementById('exportBtn').addEventListener('click', async () => {
-      const node = document.getElementById('cy');
-      const dataUrl = await htmlToImage.toPng(node);
-      const a = document.createElement('a');
-      a.download = `sudiviz-${Date.now()}.png`;
-      a.href = dataUrl;
-      a.click();
+    document.getElementById('logsBtn').addEventListener('click', () => {
+      // Open CloudWatch Logs for the current region
+      const region = (document.getElementById('meta-region').textContent || '').replace('region: ', '').trim() || 'us-east-1';
+      const logsUrl = `https://${region}.console.aws.amazon.com/cloudwatch/home?region=${region}#logsV2:log-groups`;
+      window.open(logsUrl, '_blank');
     });
 
     // Auto-refresh every 30s; cheap because the server caches discovery.
