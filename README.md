@@ -1,6 +1,6 @@
 # 🔬 sudiviz
 
-[![Website](https://img.shields.io/badge/Website-sudiviz-blue?style=flat-square)](https://d2ewlh2csw2k2n.cloudfront.net) [![PyPI](https://img.shields.io/pypi/v/sudiviz?style=flat-square)](https://pypi.org/project/sudiviz/) [![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)](LICENSE)
+[![Website](https://img.shields.io/badge/Website-sudiviz-blue?style=flat-square)](https://d2ewlh2csw2k2n.cloudfront.net) [![PyPI](https://img.shields.io/pypi/v/sudiviz?style=flat-square)](https://pypi.org/project/sudiviz/) [![License](https://img.shields.io/badge/license-GPL--3.0--or--later-green?style=flat-square)](LICENSE)
 
 > *X-ray vision for your cloud infrastructure*
 
@@ -182,7 +182,7 @@ sudiviz drift --tfstate tfstate.json --json
 | Cluster grouping | ✅ | ❌ | ❌ |
 | Terraform drift | ✅ | ❌ | ❌ |
 | Orphan detection | ✅ | ❌ | ❌ |
-| Free & open source | ✅ MIT | $29/mo | $49/mo |
+| Free & open source | ✅ GPL-3.0 | $29/mo | $49/mo |
 
 ---
 
