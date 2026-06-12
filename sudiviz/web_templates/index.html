@@ -31,6 +31,17 @@
         <option value="cost">Color: Cost ($)</option>
         <option value="security">Color: Security</option>
       </select>
+      <select id="regionSelect" title="Switch AWS region">
+        <option value="us-east-1">us-east-1</option>
+        <option value="us-east-2">us-east-2</option>
+        <option value="us-west-1">us-west-1</option>
+        <option value="us-west-2">us-west-2</option>
+        <option value="eu-west-1">eu-west-1</option>
+        <option value="eu-west-2">eu-west-2</option>
+        <option value="eu-central-1">eu-central-1</option>
+        <option value="ap-southeast-1">ap-southeast-1</option>
+        <option value="ap-northeast-1">ap-northeast-1</option>
+      </select>
       <button id="sgFlowBtn" title="Toggle SG flow edges">🔒 SG</button>
       <button id="orphansBtn" title="Toggle orphans only">⚠ orphans</button>
       <button id="clusterBtn" title="Toggle cluster grouping">⊞ cluster</button>
@@ -40,6 +51,11 @@
 
   <main id="layout">
     <section id="cy"></section>
+    <div id="empty-state" style="display:none;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;pointer-events:none;">
+      <div style="font-size:3rem;margin-bottom:12px">☁️</div>
+      <div style="font-size:1.1rem;font-weight:600;color:#6b7280" id="empty-state-msg">No resources found in this region.</div>
+      <div style="font-size:0.85rem;color:#9ca3af;margin-top:6px">Switch region or deploy resources to see the topology.</div>
+    </div>
     <canvas id="traffic-canvas"></canvas>
 
     <aside id="sidebar">
@@ -55,12 +71,19 @@
             <li><span class="dot orphan"></span> Orphan (red dashed)</li>
           </ul>
           <h4 style="margin:6px 0 2px;font-size:0.75em;color:#6b7280">Node types</h4>
-          <ul style="font-size:0.8em">
-            <li>⬡ EKS Cluster &nbsp; ⬜ EKS Node Group</li>
-            <li>⬛ ECS Cluster &nbsp; ⬜ ECS Service</li>
-            <li>⬜ ALB / NLB &nbsp; ⬜ Target Group</li>
-            <li>⬜ EC2 Instance &nbsp; ◇ Security Group</li>
-            <li>▽ Lambda &nbsp; ⬜ RDS &nbsp; ⬜ S3</li>
+          <ul style="font-size:0.8em;list-style:none;padding:0">
+            <li style="display:flex;align-items:center;gap:5px;margin:3px 0"><svg width="18" height="18" viewBox="0 0 80 80"><rect width="80" height="80" rx="10" fill="#FF9900"/><polygon points="40,14 62,27 62,53 40,66 18,53 18,27" fill="none" stroke="white" stroke-width="5"/><circle cx="40" cy="40" r="8" fill="white" opacity="0.9"/></svg> EKS Cluster</li>
+            <li style="display:flex;align-items:center;gap:5px;margin:3px 0"><svg width="18" height="18" viewBox="0 0 80 80"><rect width="80" height="80" rx="10" fill="#0080FF"/><rect x="12" y="24" width="24" height="24" rx="3" fill="white" opacity="0.9"/><rect x="44" y="24" width="24" height="24" rx="3" fill="white" opacity="0.9"/><rect x="28" y="52" width="24" height="12" rx="3" fill="white" opacity="0.9"/></svg> EKS Node Group</li>
+            <li style="display:flex;align-items:center;gap:5px;margin:3px 0"><svg width="18" height="18" viewBox="0 0 80 80"><rect width="80" height="80" rx="10" fill="#FF9900"/><rect x="16" y="20" width="48" height="12" rx="3" fill="white" opacity="0.9"/><rect x="16" y="36" width="48" height="12" rx="3" fill="white" opacity="0.9"/><rect x="16" y="52" width="48" height="12" rx="3" fill="white" opacity="0.9"/></svg> ECS Cluster</li>
+            <li style="display:flex;align-items:center;gap:5px;margin:3px 0"><svg width="18" height="18" viewBox="0 0 80 80"><rect width="80" height="80" rx="10" fill="#C7131F"/><rect x="20" y="18" width="40" height="44" rx="3" fill="white" opacity="0.9"/><rect x="26" y="26" width="28" height="4" rx="1" fill="#C7131F"/><rect x="26" y="34" width="22" height="4" rx="1" fill="#C7131F"/><rect x="26" y="42" width="18" height="4" rx="1" fill="#C7131F"/></svg> ECS Service</li>
+            <li style="display:flex;align-items:center;gap:5px;margin:3px 0"><svg width="18" height="18" viewBox="0 0 80 80"><rect width="80" height="80" rx="10" fill="#E7157B"/><text x="40" y="52" font-size="36" text-anchor="middle" fill="white">⚖</text></svg> ALB / NLB</li>
+            <li style="display:flex;align-items:center;gap:5px;margin:3px 0"><svg width="18" height="18" viewBox="0 0 80 80"><rect width="80" height="80" rx="10" fill="#06b6d4"/><circle cx="40" cy="38" r="20" fill="none" stroke="white" stroke-width="5"/><circle cx="40" cy="38" r="8" fill="white"/></svg> Target Group</li>
+            <li style="display:flex;align-items:center;gap:5px;margin:3px 0"><svg width="18" height="18" viewBox="0 0 80 80"><rect width="80" height="80" rx="10" fill="#FF9900"/><rect x="20" y="22" width="40" height="30" rx="3" fill="white" opacity="0.9"/><rect x="26" y="28" width="28" height="4" rx="1" fill="#FF9900"/><rect x="26" y="36" width="20" height="4" rx="1" fill="#FF9900"/></svg> EC2 Instance</li>
+            <li style="display:flex;align-items:center;gap:5px;margin:3px 0"><svg width="18" height="18" viewBox="0 0 80 80"><rect width="80" height="80" rx="10" fill="#DD344C"/><path d="M40 14 L58 24 L58 44 Q58 58 40 66 Q22 58 22 44 L22 24 Z" fill="white" opacity="0.9"/></svg> Security Group</li>
+            <li style="display:flex;align-items:center;gap:5px;margin:3px 0"><svg width="18" height="18" viewBox="0 0 80 80"><rect width="80" height="80" rx="10" fill="#E7157B"/><text x="40" y="54" font-size="40" text-anchor="middle" fill="white" font-family="serif" font-style="italic">λ</text></svg> Lambda</li>
+            <li style="display:flex;align-items:center;gap:5px;margin:3px 0"><svg width="18" height="18" viewBox="0 0 80 80"><rect width="80" height="80" rx="10" fill="#2965CC"/><ellipse cx="40" cy="26" rx="22" ry="8" fill="white" opacity="0.9"/><rect x="18" y="26" width="44" height="24" fill="#2965CC"/><ellipse cx="40" cy="50" rx="22" ry="8" fill="white" opacity="0.9"/><ellipse cx="40" cy="26" rx="22" ry="8" fill="white" opacity="0.9"/></svg> RDS</li>
+            <li style="display:flex;align-items:center;gap:5px;margin:3px 0"><svg width="18" height="18" viewBox="0 0 80 80"><rect width="80" height="80" rx="10" fill="#59A749"/><path d="M40 14 L56 23 L56 57 L40 66 L24 57 L24 23 Z" fill="white" opacity="0.9"/></svg> S3</li>
+            <li style="display:flex;align-items:center;gap:5px;margin:3px 0"><svg width="18" height="18" viewBox="0 0 80 80"><rect width="80" height="80" rx="10" fill="#8C4FFF"/><rect x="14" y="14" width="52" height="52" rx="4" fill="none" stroke="white" stroke-width="4" stroke-dasharray="6,3"/><circle cx="40" cy="40" r="10" fill="white" opacity="0.9"/></svg> VPC</li>
           </ul>
         </div>
         <div id="legend-health" style="display:none">
@@ -138,33 +161,89 @@
             selector: 'node',
             style: {
               'label': 'data(label)',
-              'text-valign': 'center',
+              'text-valign': 'bottom',
               'text-halign': 'center',
+              'text-margin-y': 4,
               'background-color': '#fff',
               'border-width': 2,
               'border-color': '#374151',
               'color': '#111827',
               'font-size': 11,
+              'font-weight': 'bold',
               'text-wrap': 'wrap',
-              'text-max-width': 140,
-              'padding': '12px',
+              'text-max-width': 120,
               'shape': 'round-rectangle',
-              'width': 'label',
-              'height': 'label',
+              'width': 70,
+              'height': 70,
+              'background-fit': 'contain',
+              'background-clip': 'none',
+              'background-image-opacity': 1,
+              'background-width': '60%',
+              'background-height': '60%',
+              'background-position-x': '50%',
+              'background-position-y': '38%',
             }
           },
-          { selector: 'node.alb',            style: { 'shape': 'cut-rectangle', 'background-color': '#dbeafe' } },
-          { selector: 'node.target_group',   style: { 'shape': 'round-rectangle', 'background-color': '#ecfeff' } },
-          { selector: 'node.instance',       style: { 'shape': 'round-rectangle', 'background-color': '#f5f3ff' } },
-          { selector: 'node.security_group', style: { 'shape': 'diamond',         'background-color': '#fef3c7' } },
-          { selector: 'node.vpc',            style: { 'shape': 'rectangle',       'background-color': '#f3f4f6' } },
-          { selector: 'node.ecs_cluster',    style: { 'shape': 'barrel',          'background-color': '#fce7f3' } },
-          { selector: 'node.ecs_service',    style: { 'shape': 'round-rectangle', 'background-color': '#fdf4ff' } },
-          { selector: 'node.eks_cluster',    style: { 'shape': 'hexagon',         'background-color': '#eff6ff' } },
-          { selector: 'node.eks_nodegroup',  style: { 'shape': 'round-rectangle', 'background-color': '#e0f2fe' } },
-          { selector: 'node.rds',            style: { 'shape': 'barrel',          'background-color': '#fef9c3' } },
-          { selector: 'node.lambda',         style: { 'shape': 'round-triangle',  'background-color': '#f0fdf4' } },
-          { selector: 'node.s3',             style: { 'shape': 'round-rectangle', 'background-color': '#ede9fe' } },
+          // AWS ALB icon (pink/magenta load balancer)
+          { selector: 'node.alb', style: {
+              'shape': 'round-rectangle', 'background-color': '#fff7ed',
+              'background-image': "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" rx="10" fill="#E7157B"/><text x="40" y="52" font-size="36" text-anchor="middle" fill="white">&#9878;</text></svg>'),
+          }},
+          // AWS Target Group icon (cyan bullseye)
+          { selector: 'node.target_group', style: {
+              'shape': 'round-rectangle', 'background-color': '#ecfeff',
+              'background-image': "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" rx="10" fill="#06b6d4"/><circle cx="40" cy="40" r="22" fill="none" stroke="white" stroke-width="5"/><circle cx="40" cy="40" r="12" fill="none" stroke="white" stroke-width="4"/><circle cx="40" cy="40" r="4" fill="white"/></svg>'),
+          }},
+          // AWS EC2 instance icon (orange server)
+          { selector: 'node.instance', style: {
+              'shape': 'round-rectangle', 'background-color': '#fffbeb',
+              'background-image': "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" rx="10" fill="#FF9900"/><rect x="18" y="20" width="44" height="32" rx="3" fill="white" opacity="0.9"/><rect x="24" y="27" width="32" height="4" rx="1" fill="#FF9900"/><rect x="24" y="35" width="24" height="4" rx="1" fill="#FF9900"/><rect x="24" y="43" width="16" height="4" rx="1" fill="#FF9900"/><rect x="28" y="56" width="8" height="8" rx="1" fill="white"/><rect x="44" y="56" width="8" height="8" rx="1" fill="white"/></svg>'),
+          }},
+          // AWS Security Group icon (red shield)
+          { selector: 'node.security_group', style: {
+              'shape': 'round-rectangle', 'background-color': '#fef3c7',
+              'background-image': "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" rx="10" fill="#DD344C"/><path d="M40 14 L58 24 L58 44 Q58 58 40 66 Q22 58 22 44 L22 24 Z" fill="white" opacity="0.9"/><path d="M33 40 L38 45 L49 34" stroke="#DD344C" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>'),
+          }},
+          // AWS VPC icon (purple network boundary)
+          { selector: 'node.vpc', style: {
+              'shape': 'round-rectangle', 'background-color': '#f3f4f6',
+              'background-image': "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" rx="10" fill="#8C4FFF"/><rect x="14" y="14" width="52" height="52" rx="4" fill="none" stroke="white" stroke-width="4" stroke-dasharray="6,3"/><circle cx="40" cy="40" r="10" fill="white" opacity="0.9"/></svg>'),
+          }},
+          // AWS ECS cluster icon (orange rows = tasks)
+          { selector: 'node.ecs_cluster', style: {
+              'shape': 'round-rectangle', 'background-color': '#fff7ed',
+              'background-image': "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" rx="10" fill="#FF9900"/><rect x="16" y="20" width="48" height="11" rx="3" fill="white" opacity="0.9"/><rect x="16" y="35" width="48" height="11" rx="3" fill="white" opacity="0.9"/><rect x="16" y="50" width="48" height="11" rx="3" fill="white" opacity="0.9"/></svg>'),
+          }},
+          // AWS ECS service icon (dark red document)
+          { selector: 'node.ecs_service', style: {
+              'shape': 'round-rectangle', 'background-color': '#fff1f2',
+              'background-image': "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" rx="10" fill="#C7131F"/><rect x="20" y="16" width="40" height="48" rx="3" fill="white" opacity="0.9"/><rect x="26" y="24" width="28" height="4" rx="1" fill="#C7131F"/><rect x="26" y="32" width="22" height="4" rx="1" fill="#C7131F"/><rect x="26" y="40" width="18" height="4" rx="1" fill="#C7131F"/><rect x="26" y="48" width="14" height="4" rx="1" fill="#C7131F"/></svg>'),
+          }},
+          // AWS EKS cluster icon (orange hexagon)
+          { selector: 'node.eks_cluster', style: {
+              'shape': 'round-rectangle', 'background-color': '#fffbeb',
+              'background-image': "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" rx="10" fill="#FF9900"/><polygon points="40,12 62,25 62,55 40,68 18,55 18,25" fill="none" stroke="white" stroke-width="5"/><circle cx="40" cy="40" r="8" fill="white" opacity="0.9"/></svg>'),
+          }},
+          // AWS EKS node group icon (blue grid)
+          { selector: 'node.eks_nodegroup', style: {
+              'shape': 'round-rectangle', 'background-color': '#eff6ff',
+              'background-image': "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" rx="10" fill="#0080FF"/><rect x="12" y="22" width="24" height="24" rx="3" fill="white" opacity="0.9"/><rect x="44" y="22" width="24" height="24" rx="3" fill="white" opacity="0.9"/><rect x="28" y="50" width="24" height="14" rx="3" fill="white" opacity="0.9"/></svg>'),
+          }},
+          // AWS RDS icon (blue cylinder)
+          { selector: 'node.rds', style: {
+              'shape': 'round-rectangle', 'background-color': '#eff6ff',
+              'background-image': "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" rx="10" fill="#2965CC"/><ellipse cx="40" cy="24" rx="22" ry="8" fill="white" opacity="0.9"/><rect x="18" y="24" width="44" height="26" fill="#2965CC"/><ellipse cx="40" cy="50" rx="22" ry="8" fill="white" opacity="0.75"/><ellipse cx="40" cy="24" rx="22" ry="8" fill="white" opacity="0.9"/></svg>'),
+          }},
+          // AWS Lambda icon (pink lambda symbol)
+          { selector: 'node.lambda', style: {
+              'shape': 'round-rectangle', 'background-color': '#fdf4ff',
+              'background-image': "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" rx="10" fill="#E7157B"/><text x="40" y="55" font-size="42" text-anchor="middle" fill="white" font-family="Georgia,serif" font-style="italic">&#955;</text></svg>'),
+          }},
+          // AWS S3 icon (green bucket shape)
+          { selector: 'node.s3', style: {
+              'shape': 'round-rectangle', 'background-color': '#f0fdf4',
+              'background-image': "data:image/svg+xml;charset=utf-8," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><rect width="80" height="80" rx="10" fill="#59A749"/><path d="M22 24 L40 14 L58 24 L58 60 Q58 66 40 66 Q22 66 22 60 Z" fill="white" opacity="0.9"/><line x1="22" y1="34" x2="58" y2="34" stroke="#59A749" stroke-width="2"/><line x1="22" y1="44" x2="58" y2="44" stroke="#59A749" stroke-width="2"/><line x1="22" y1="54" x2="58" y2="54" stroke="#59A749" stroke-width="2"/></svg>'),
+          }},
           { selector: 'node.healthy',        style: { 'border-color': '#22c55e' } },
           { selector: 'node.unhealthy',      style: { 'border-color': '#ef4444' } },
           { selector: 'node.warning, node.initial, node.draining', style: { 'border-color': '#eab308' } },
@@ -371,17 +450,58 @@
       document.getElementById('meta-region').textContent  = `region: ${meta.region || '—'}`;
       document.getElementById('meta-vpc').textContent     = `vpc: ${meta.vpc_id || '—'}`;
       document.getElementById('meta-time').textContent    = `last update: ${new Date().toLocaleTimeString()}`;
+      // Keep dropdown in sync with actual region returned from server
+      if (meta.region) {
+        const sel = document.getElementById('regionSelect');
+        if (![...sel.options].some(o => o.value === meta.region)) {
+          sel.add(new Option(meta.region, meta.region));
+        }
+        sel.value = meta.region;
+      }
+    }
+
+    function activeRegion() {
+      return document.getElementById('regionSelect').value;
+    }
+
+    function showEmptyState(msg) {
+      document.getElementById('empty-state-msg').textContent = msg || 'No resources found in this region.';
+      document.getElementById('empty-state').style.display = 'block';
+    }
+
+    function hideEmptyState() {
+      document.getElementById('empty-state').style.display = 'none';
     }
 
     async function fetchGraph() {
+      const region = activeRegion();
+      const qs = `?region=${encodeURIComponent(region)}`;
       try {
-        const [gRes, dRes] = await Promise.all([fetch('/graph'), fetch('/diagnose')]);
+        const [gRes, dRes] = await Promise.all([
+          fetch(`/graph${qs}`),
+          fetch(`/diagnose${qs}`),
+        ]);
+        if (!gRes.ok) {
+          const err = await gRes.json().catch(() => ({}));
+          showEmptyState(err.error || `Error loading region ${region}`);
+          return;
+        }
         const graph = await gRes.json();
         const diag  = await dRes.json();
         lastGraph = graph;
+
+        const hasNodes = (graph.nodes || []).length > 0;
+        if (!hasNodes) {
+          showEmptyState(`No resources found in ${region}.`);
+          if (cy) { cy.batch(() => cy.elements().remove()); }
+          renderFixes([]);
+          updateMeta({ ...(graph.meta || {}), region });
+          return;
+        }
+        hideEmptyState();
+
         if (!cy) {
           buildCy(graph);
-          // Apply theme after initial build
           if (isDarkMode) updateCyTheme(true);
         } else {
           replaceElements(graph);
@@ -391,6 +511,7 @@
         updateMeta(graph.meta || {});
       } catch (err) {
         console.error('fetchGraph failed', err);
+        showEmptyState(`Failed to load ${region} — check network.`);
       }
     }
 
@@ -416,6 +537,10 @@
         ws.onmessage = (msg) => {
           try {
             const payload = JSON.parse(msg.data);
+            // WS broadcasts are always for the primary (server-startup) region.
+            // Only apply them if the user hasn't switched to a different region.
+            const wsRegion = (payload.graph?.meta?.region) || (payload.diagnosis?.region);
+            if (wsRegion && wsRegion !== activeRegion()) return;
             if (payload.type === 'graph') {
               lastGraph = payload.graph;
               if (!cy) buildCy(payload.graph); else replaceElements(payload.graph);
@@ -433,6 +558,11 @@
 
     // -- Buttons -------------------------------------------------------
     document.getElementById('refreshBtn').addEventListener('click', fetchGraph);
+    document.getElementById('regionSelect').addEventListener('change', () => {
+      if (cy) { cy.batch(() => cy.elements().remove()); }
+      hideEmptyState();
+      fetchGraph();
+    });
     document.getElementById('orphansBtn').addEventListener('click', () => {
       orphanMode = !orphanMode;
       document.getElementById('orphansBtn').classList.toggle('active', orphanMode);

@@ -588,6 +588,9 @@ def _discover_lambda_sync(session: boto3.Session, vpc_id: Optional[str]) -> list
 
 def _discover_s3_sync(session: boto3.Session) -> list[S3Bucket]:
     s3 = session.client("s3", config=build_botocore_config())
+    # Only show buckets that belong to the session's region so the graph is
+    # scoped to the selected region (S3 is global but buckets have a home region).
+    session_region = session.region_name or "us-east-1"
     buckets: list[S3Bucket] = []
 
     resp = s3.list_buckets()
@@ -604,6 +607,9 @@ def _discover_s3_sync(session: boto3.Session) -> list[S3Bucket]:
             region = s3.get_bucket_location(Bucket=name).get("LocationConstraint") or "us-east-1"
         except Exception:  # noqa: BLE001
             pass
+        # Skip buckets that don't belong to the session's region.
+        if region and region != session_region:
+            continue
         try:
             v = s3.get_bucket_versioning(Bucket=name)
             versioning_enabled = v.get("Status") == "Enabled"

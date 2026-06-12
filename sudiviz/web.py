@@ -95,32 +95,45 @@ def create_app(config: ServerConfig):  # type: ignore[no-untyped-def]
             "FastAPI is not installed. Install the web extras: `pip install sudiviz[web]`."
         ) from exc
 
-    state = CachedState()
+    # Per-region cache: region_str → CachedState
+    region_cache: dict[str, CachedState] = {}
     hub = WebSocketHub()
 
-    async def refresh_once() -> None:
+    def _get_state(region: Optional[str]) -> CachedState:
+        key = region or config.region or "default"
+        if key not in region_cache:
+            region_cache[key] = CachedState()
+        return region_cache[key]
+
+    async def refresh_region(region: Optional[str]) -> CachedState:
+        state = _get_state(region)
         try:
             discovery = await discover_all(
                 vpc_id=config.vpc_id,
                 service_tag=config.service_tag,
                 profile=config.profile,
-                region=config.region,
+                region=region or config.region,
             )
             graph = mark_orphaned_edges(build_graph(discovery))
             state.graph = graph
             state.cytoscape = export_cytoscape_json(graph, region=discovery.region)
-            state.diagnosis = diagnose(graph).to_dict()
+            diag_dict = diagnose(graph).to_dict()
+            diag_dict["region"] = discovery.region  # lets the WS client filter by region
+            state.diagnosis = diag_dict
             state.last_refresh = datetime.utcnow()
             state.error = None
-            await hub.broadcast({"type": "graph", "graph": state.cytoscape})
-            await hub.broadcast({"type": "diagnosis", "diagnosis": state.diagnosis})
+            # Only broadcast to WS clients for the primary/default region.
+            if region is None or region == config.region:
+                await hub.broadcast({"type": "graph", "graph": state.cytoscape})
+                await hub.broadcast({"type": "diagnosis", "diagnosis": state.diagnosis})
         except Exception as exc:  # noqa: BLE001
             logger.exception("refresh loop error")
             state.error = str(exc)
+        return state
 
     async def refresh_loop() -> None:
         while True:
-            await refresh_once()
+            await refresh_region(None)
             await asyncio.sleep(config.refresh_interval)
 
     @asynccontextmanager
@@ -143,43 +156,48 @@ def create_app(config: ServerConfig):  # type: ignore[no-untyped-def]
         return FileResponse(TEMPLATE_DIR / "index.html")
 
     @app.get("/graph")
-    async def graph_endpoint() -> JSONResponse:
+    async def graph_endpoint(region: Optional[str] = None) -> JSONResponse:
+        state = _get_state(region)
         if state.error:
             return JSONResponse({"error": state.error}, status_code=503)
         if not state.cytoscape:
-            await refresh_once()
+            state = await refresh_region(region)
+        if state.error:
+            return JSONResponse({"error": state.error}, status_code=503)
         return JSONResponse(state.cytoscape)
 
     @app.get("/diagnose")
-    async def diagnose_endpoint() -> JSONResponse:
+    async def diagnose_endpoint(region: Optional[str] = None) -> JSONResponse:
+        state = _get_state(region)
         if state.error:
             return JSONResponse({"error": state.error}, status_code=503)
         if not state.diagnosis:
-            await refresh_once()
+            state = await refresh_region(region)
+        if state.error:
+            return JSONResponse({"error": state.error}, status_code=503)
         return JSONResponse(state.diagnosis)
 
     @app.get("/healthz")
     async def healthz() -> JSONResponse:
+        primary = _get_state(None)
         return JSONResponse(
             {
-                "ok": state.error is None,
-                "last_refresh": state.last_refresh.isoformat() if state.last_refresh else None,
-                "error": state.error,
+                "ok": primary.error is None,
+                "last_refresh": primary.last_refresh.isoformat() if primary.last_refresh else None,
+                "error": primary.error,
             }
         )
 
     @app.websocket("/ws")
     async def ws_endpoint(ws: WebSocket) -> None:
         await hub.connect(ws)
-        # Send current snapshot immediately on connect — no need for the client
-        # to round-trip /graph again.
-        if state.cytoscape:
-            await ws.send_text(json.dumps({"type": "graph", "graph": state.cytoscape}, default=str))
-        if state.diagnosis:
-            await ws.send_text(json.dumps({"type": "diagnosis", "diagnosis": state.diagnosis}, default=str))
+        primary = _get_state(None)
+        if primary.cytoscape:
+            await ws.send_text(json.dumps({"type": "graph", "graph": primary.cytoscape}, default=str))
+        if primary.diagnosis:
+            await ws.send_text(json.dumps({"type": "diagnosis", "diagnosis": primary.diagnosis}, default=str))
         try:
             while True:
-                # Keep the connection alive; we don't expect inbound messages.
                 await ws.receive_text()
         except WebSocketDisconnect:
             pass

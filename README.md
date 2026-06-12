@@ -4,11 +4,11 @@
 
 > *X-ray vision for your cloud infrastructure*
 
-**sudiviz** visualizes your live AWS infrastructure as an interactive graph. Auto-detects misconfigurations, unhealthy targets, and orphan resources — then fixes them with one command.
+**sudiviz** visualizes your live AWS infrastructure as an interactive graph — across multiple regions. Auto-detects misconfigurations, unhealthy targets, and orphan resources — then fixes them with one command.
 
-🚀 Zero AI tokens | 💸 Zero cost | 🐍 Pure Python
+🚀 Zero AI tokens | 💸 Zero cost | 🐍 Pure Python | 🌍 Multi-region
 
-![Web Graph](https://raw.githubusercontent.com/pydevsg/sudiviz/main/docs/images/sudiviz_ingress_traffic_dark_mode.png)
+![Web Graph](https://raw.githubusercontent.com/pydevsg/sudiviz/main/docs/images/sudiviz_updated_graphical_flow.png)
 
 ---
 
@@ -36,12 +36,14 @@ sudiviz fix --apply
 | Feature | Description |
 |---------|-------------|
 | **Live Topology** | Real-time graph of ALB → Target Groups → EC2 → Security Groups |
+| **AWS Resource Icons** | Each node displays a colour-coded AWS-style icon (ALB, EC2, RDS, S3, ECS, EKS, Lambda, SG…) |
+| **Multi-Region** | Switch between AWS regions (us-east-1, us-west-2, eu-west-1, ap-northeast-1…) from a dropdown — no restart needed |
 | **Health Detection** | Unhealthy targets, failing health checks, orphan resources |
 | **Auto-Fix** | One-click remediation with `sudiviz fix --apply` |
 | **Traffic Animation** | Visualize request flow with animated pulses |
 | **Health Heatmaps** | Color-code infrastructure by health status |
 | **Cost Heatmap** | FinOps view — visualize estimated monthly costs per resource |
-| **Security Group Flows** | Visualize ingress/egress rules between security groups |
+| **Security Group Flows** | Visualize ingress/egress rules between security groups (blue = ingress, purple = egress) |
 | **CloudWatch Integration** | One-click links to metrics and logs for each resource |
 | **Dark/Light Mode** | Toggle theme in web UI |
 | **Cluster Grouping** | Group resources by service type (Load Balancers, ECS, Security, etc.) |
@@ -65,6 +67,9 @@ sudiviz tui
 ### Web (Cytoscape.js)
 ```bash
 sudiviz graph --output web --port 8000 --open
+
+# Specify a default region (switch regions live from the UI dropdown)
+sudiviz graph --output web --region us-east-1 --port 8000 --open
 ```
 
 ### PNG Export
@@ -145,6 +150,14 @@ sudiviz drift --tfstate tfstate.json --json
 <details>
 <summary>Click to expand</summary>
 
+### AWS Resource Icons + Multi-Region Topology
+![Web Graph](https://raw.githubusercontent.com/pydevsg/sudiviz/main/docs/images/sudiviz_updated_graphical_flow.png)
+
+> Each node shows a colour-coded AWS icon. Switch regions live from the dropdown in the top bar (us-east-1, us-east-2, eu-west-1, us-west-2 and more).
+
+### Security Group Ingress/Egress Flows (Dark Mode)
+![Ingress Traffic](https://raw.githubusercontent.com/pydevsg/sudiviz/main/docs/images/sudiviz_ingress_traffic_dark_mode.png)
+
 ### Terminal TUI
 ![TUI](https://raw.githubusercontent.com/pydevsg/sudiviz/main/docs/images/sudiviz_tui.png)
 
@@ -175,6 +188,8 @@ sudiviz drift --tfstate tfstate.json --json
 | Feature | sudiviz | Hava.io | Cloudcraft |
 |---------|:-------:|:-------:|:----------:|
 | Live data | ✅ | ❌ | ❌ |
+| AWS resource icons | ✅ | ✅ | ✅ |
+| Multi-region switcher | ✅ | ✅ | ✅ |
 | Auto-fix | ✅ | ❌ | ❌ |
 | Traffic animation | ✅ | ❌ | ❌ |
 | Health heatmaps | ✅ | ❌ | ❌ |

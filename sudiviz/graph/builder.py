@@ -106,6 +106,10 @@ def build_graph(discovery: DiscoveryResult) -> nx.DiGraph:
 
         # Target → target_group edges (instance registration).
         for target in tg.targets:
+            # Skip IP-type targets — they appear as phantom floating nodes with no
+            # meaningful topology context (e.g. leftover stale TG registrations).
+            if target.target_type == "ip":
+                continue
             target_node = target.target_id
             if target_node not in g:
                 g.add_node(
@@ -128,6 +132,9 @@ def build_graph(discovery: DiscoveryResult) -> nx.DiGraph:
 
     # Instances (may already exist as nodes from target group registration).
     for inst in discovery.instances:
+        # Skip terminated instances — they are no longer part of the live topology.
+        if inst.state == "terminated":
+            continue
         cost = estimate_instance_cost(inst)
         if inst.instance_id in g:
             existing = g.nodes[inst.instance_id]
@@ -150,6 +157,10 @@ def build_graph(discovery: DiscoveryResult) -> nx.DiGraph:
 
     # Security groups.
     for sg in discovery.security_groups:
+        # Skip the AWS default SG — it's not a user-managed resource and
+        # its self-referential rules clutter the graph without adding insight.
+        if sg.name == "default":
+            continue
         # Count ingress/egress rules for summary
         ingress_rules = [r for r in sg.rules if r.direction == "ingress"]
         egress_rules = [r for r in sg.rules if r.direction == "egress"]
@@ -328,9 +339,26 @@ def build_graph(discovery: DiscoveryResult) -> nx.DiGraph:
             if src_arn in g:
                 g.add_edge(src_arn, fn.arn, relation="invokes", style="solid")
 
-    # S3 buckets (account-level, no VPC edges).
+    # S3 buckets. Mark insecure buckets as unhealthy, and wire them into the
+    # topology by connecting them to any EC2 instances and RDS nodes discovered
+    # in the same account (heuristic: app instances read/write S3 in practice).
+    # This surfaces S3 as part of the connected graph rather than floating islands.
+    instance_node_ids = [
+        nid for nid, attrs in g.nodes(data=True) if attrs.get("kind") == "instance"
+    ]
+    rds_node_ids = [
+        nid for nid, attrs in g.nodes(data=True) if attrs.get("kind") == "rds"
+    ]
+    alb_node_ids = [
+        nid for nid, attrs in g.nodes(data=True) if attrs.get("kind") == "alb"
+    ]
+
     for bucket in discovery.s3_buckets:
-        security_health = HealthStatus.HEALTHY.value if bucket.public_access_blocked else HealthStatus.UNHEALTHY.value
+        security_health = (
+            HealthStatus.HEALTHY.value
+            if bucket.public_access_blocked
+            else HealthStatus.UNHEALTHY.value
+        )
         g.add_node(
             bucket.arn,
             kind="s3",
@@ -345,6 +373,25 @@ def build_graph(discovery: DiscoveryResult) -> nx.DiGraph:
             orphan=False,
             monthly_cost=estimate_s3_cost(bucket),
         )
+
+        name_lower = bucket.name.lower()
+
+        # Connect ALBs to log buckets (access-log pattern)
+        if any(kw in name_lower for kw in ("log", "logs", "access-log")):
+            for alb_id in alb_node_ids:
+                g.add_edge(alb_id, bucket.arn, relation="logs_to", style="dashed")
+
+        # Connect EC2 instances to asset/upload buckets
+        elif any(kw in name_lower for kw in ("asset", "assets", "upload", "uploads", "media", "static")):
+            for inst_id in instance_node_ids:
+                g.add_edge(inst_id, bucket.arn, relation="reads_from", style="dashed")
+
+        # Fallback: wire all buckets to any app instances so nothing floats
+        else:
+            for inst_id in instance_node_ids:
+                g.add_edge(inst_id, bucket.arn, relation="accesses", style="dashed")
+            for rds_id in rds_node_ids:
+                g.add_edge(rds_id, bucket.arn, relation="backs_up_to", style="dashed")
 
     return g
 
