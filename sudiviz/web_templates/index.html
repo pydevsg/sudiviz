@@ -473,10 +473,13 @@
       document.getElementById('empty-state').style.display = 'none';
     }
 
-    async function fetchGraph() {
+    async function fetchGraph({ forceRefresh = false } = {}) {
       const region = activeRegion();
       const qs = `?region=${encodeURIComponent(region)}`;
       try {
+        if (forceRefresh) {
+          await fetch(`/api/refresh${qs}`, { method: 'POST' });
+        }
         const [gRes, dRes] = await Promise.all([
           fetch(`/graph${qs}`),
           fetch(`/diagnose${qs}`),
@@ -557,7 +560,7 @@
     }
 
     // -- Buttons -------------------------------------------------------
-    document.getElementById('refreshBtn').addEventListener('click', fetchGraph);
+    document.getElementById('refreshBtn').addEventListener('click', () => fetchGraph({ forceRefresh: true }));
     document.getElementById('regionSelect').addEventListener('change', () => {
       if (cy) { cy.batch(() => cy.elements().remove()); }
       hideEmptyState();

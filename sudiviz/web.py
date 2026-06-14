@@ -166,6 +166,14 @@ def create_app(config: ServerConfig):  # type: ignore[no-untyped-def]
             return JSONResponse({"error": state.error}, status_code=503)
         return JSONResponse(state.cytoscape)
 
+    @app.post("/api/refresh")
+    async def force_refresh(region: Optional[str] = None) -> JSONResponse:
+        """Force an immediate AWS re-discovery, bypassing the cache."""
+        state = await refresh_region(region)
+        if state.error:
+            return JSONResponse({"error": state.error}, status_code=503)
+        return JSONResponse({"ok": True, "last_refresh": state.last_refresh.isoformat() if state.last_refresh else None})
+
     @app.get("/diagnose")
     async def diagnose_endpoint(region: Optional[str] = None) -> JSONResponse:
         state = _get_state(region)
