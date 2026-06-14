@@ -1,0 +1,63 @@
+name: Generate Changelog JSON
+
+on:
+  push:
+    branches: [main]
+  create:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog.json from tags
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python3 - <<'EOF'
+          import subprocess, json, re
+
+          tags = subprocess.check_output(
+            ["git", "tag", "--sort=-version:refname"], text=True
+          ).strip().split("\n")
+          tags = [t for t in tags if t][:15]
+
+          entries = []
+          for tag in tags:
+            date_raw = subprocess.check_output(
+              ["git", "log", "-1", "--format=%ai", tag], text=True
+            ).strip()
+            date = date_raw[:10] if date_raw else ""
+
+            msg = subprocess.check_output(
+              ["git", "log", "-1", "--format=%B", tag], text=True
+            ).strip()
+
+            lines = [l.lstrip("*- ").strip() for l in msg.splitlines()]
+            lines = [l for l in lines if l and not re.match(r"^co-authored-by", l, re.I)]
+            first = lines[0] if lines else ""
+            bullet = re.sub(r"^v?\d+\.\d+[\.\d]*\s*[-–]\s*", "", first, flags=re.I).strip()
+
+            entries.append({"version": tag, "date": date, "summary": bullet})
+
+          with open("docs/changelog.json", "w") as f:
+            json.dump(entries, f, indent=2)
+          print(json.dumps(entries, indent=2))
+          EOF
+
+      - name: Commit changelog.json
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/changelog.json
+          git diff --cached --quiet || git commit -m "chore: update changelog.json"
+          git push

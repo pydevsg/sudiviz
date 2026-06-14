@@ -1,0 +1,62 @@
+[
+  {
+    "version": "v1.4.1",
+    "date": "2026-06-14",
+    "summary": "Dynamic landing page, live refresh fix, GitHub Pages"
+  },
+  {
+    "version": "v1.4.0",
+    "date": "2026-06-14",
+    "summary": "Added API endpoint for force refreshing AWS discovery"
+  },
+  {
+    "version": "v1.3.0",
+    "date": "2026-06-12",
+    "summary": "Multi-region support, AWS resource icons, graph topology fixes"
+  },
+  {
+    "version": "v1.2.1",
+    "date": "2026-06-09",
+    "summary": "Fix README license references to GPL-3.0"
+  },
+  {
+    "version": "v1.2.0",
+    "date": "2026-06-05",
+    "summary": "CloudWatch Logs button, license update to GPL-3.0"
+  },
+  {
+    "version": "v1.1.0",
+    "date": "2026-06-01",
+    "summary": "Changed license from MIT to GPL-3.0-or-later in LICENSE, README.md, and pyproject.toml."
+  },
+  {
+    "version": "v1.0.0",
+    "date": "2026-05-22",
+    "summary": "Security hardening, landing page, XSS protection"
+  },
+  {
+    "version": "v0.7.1",
+    "date": "2026-05-20",
+    "summary": "Fix Bandit security scan config"
+  },
+  {
+    "version": "v0.7.0",
+    "date": "2026-05-20",
+    "summary": "Added FinOps cost heatmap and Bandit security scanning"
+  },
+  {
+    "version": "v0.6.0",
+    "date": "2026-05-20",
+    "summary": "Add cost estimation feature and visualization to README, graph, and web UI"
+  },
+  {
+    "version": "v0.5.0",
+    "date": "2026-05-16",
+    "summary": "Added cluster grouping feature"
+  },
+  {
+    "version": "v0.4.0",
+    "date": "2026-05-15",
+    "summary": "Refactor README.md for clarity and conciseness; update feature descriptions and remove redundant sections"
+  }
+]
