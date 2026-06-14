@@ -59,6 +59,7 @@
     <canvas id="traffic-canvas"></canvas>
 
     <aside id="sidebar">
+      <button id="sidebar-toggle" title="Toggle panel">‹</button>
       <div class="panel" id="legend">
         <h3>Legend</h3>
         <div id="legend-default">
@@ -1069,6 +1070,28 @@
     }
 
     document.getElementById('clusterBtn').addEventListener('click', toggleClusterMode);
+
+    // ---------------------------------------------------------------
+    // Sidebar Drawer Toggle
+    // ---------------------------------------------------------------
+    const sidebarToggleBtn = document.getElementById('sidebar-toggle');
+    let sidebarOpen = localStorage.getItem('sudiviz-sidebar') === 'open';
+
+    function applySidebarState(open) {
+      const sidebar = document.getElementById('sidebar');
+      sidebar.classList.toggle('collapsed', !open);
+      sidebarToggleBtn.textContent = open ? '›' : '‹';
+      sidebarToggleBtn.title = open ? 'Collapse panel' : 'Expand panel';
+      sidebarToggleBtn.style.right = open ? '360px' : '0px';
+      localStorage.setItem('sudiviz-sidebar', open ? 'open' : 'closed');
+    }
+
+    sidebarToggleBtn.addEventListener('click', () => {
+      sidebarOpen = !sidebarOpen;
+      applySidebarState(sidebarOpen);
+    });
+
+    applySidebarState(sidebarOpen);
 
     // Apply saved theme on load
     applyTheme(isDarkMode);
