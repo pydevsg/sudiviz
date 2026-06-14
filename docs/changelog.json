@@ -1,5 +1,10 @@
 [
   {
+    "version": "v1.4.3",
+    "date": "2026-06-14",
+    "summary": "collapsible sidebar drawer, fix version sync"
+  },
+  {
     "version": "v1.4.2",
     "date": "2026-06-14",
     "summary": "sync branding version, anchor PyPI release in git"
