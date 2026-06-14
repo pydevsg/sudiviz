@@ -2,7 +2,7 @@
   {
     "version": "v1.4.2",
     "date": "2026-06-14",
-    "summary": "chore: bump version to 1.4.2 for PyPI re-publish"
+    "summary": "sync branding version, anchor PyPI release in git"
   },
   {
     "version": "v1.4.1",
