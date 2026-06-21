@@ -1,5 +1,10 @@
 [
   {
+    "version": "v1.5.0",
+    "date": "2026-06-22",
+    "summary": "Real AWS architecture icons on graph nodes, Aurora cluster discovery, icon cleanup (23MB → 40KB)"
+  },
+  {
     "version": "v1.4.3",
     "date": "2026-06-14",
     "summary": "collapsible sidebar drawer, fix version sync"

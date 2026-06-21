@@ -255,6 +255,33 @@ class RDSInstance(_Base):
         return self.status == "available"
 
 
+class AuroraCluster(_Base):
+    """An Aurora DB cluster (serverless or provisioned)."""
+
+    provider: CloudProvider = CloudProvider.AWS
+    arn: str
+    cluster_id: str
+    engine: str                       # aurora-mysql | aurora-postgresql
+    engine_version: Optional[str] = None
+    engine_mode: str = "provisioned"  # provisioned | serverless
+    status: str = "unknown"           # available | stopped | creating | ...
+    endpoint: Optional[str] = None    # writer endpoint
+    reader_endpoint: Optional[str] = None
+    port: Optional[int] = None
+    vpc_id: Optional[str] = None
+    subnet_group: Optional[str] = None
+    security_group_ids: list[str] = Field(default_factory=list)
+    multi_az: bool = False
+    storage_encrypted: bool = False
+    deletion_protection: bool = False
+    instance_count: int = 0
+    tags: dict[str, str] = Field(default_factory=dict)
+
+    @property
+    def is_healthy(self) -> bool:
+        return self.status == "available"
+
+
 class LambdaFunction(_Base):
     """An AWS Lambda function."""
 
@@ -307,6 +334,7 @@ class DiscoveryResult(_Base):
     ecs_clusters: list[ECSCluster] = Field(default_factory=list)
     eks_clusters: list[EKSCluster] = Field(default_factory=list)
     rds_instances: list[RDSInstance] = Field(default_factory=list)
+    aurora_clusters: list[AuroraCluster] = Field(default_factory=list)
     lambda_functions: list[LambdaFunction] = Field(default_factory=list)
     s3_buckets: list[S3Bucket] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
@@ -330,6 +358,8 @@ class DiscoveryResult(_Base):
             idx[cluster.arn] = cluster
         for db in self.rds_instances:
             idx[db.arn] = db
+        for cluster in self.aurora_clusters:
+            idx[cluster.arn] = cluster
         for fn in self.lambda_functions:
             idx[fn.arn] = fn
         for bucket in self.s3_buckets:

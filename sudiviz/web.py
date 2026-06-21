@@ -29,10 +29,26 @@ from sudiviz.discovery.aws import discover_all
 from sudiviz.graph.analyzer import diagnose, mark_orphaned_edges
 from sudiviz.graph.builder import build_graph
 from sudiviz.graph.visualizer import export_cytoscape_json
+from sudiviz.web_templates.icons import all_cytoscape_uris, all_img_uris
 
 logger = logging.getLogger(__name__)
 
 TEMPLATE_DIR = Path(__file__).parent / "web_templates"
+
+# Render index.html once at startup: substitute {{ICON_<kind>}} placeholders
+# with real base64 data URIs. Falls back to the placeholder string itself
+# (which renders as a broken image) if the icon directory is absent.
+def _render_index_html() -> str:
+    html = (TEMPLATE_DIR / "index.html").read_text()
+    # Cytoscape background-image: percent-encoded SVG (base64 SVG is rejected by Cytoscape)
+    for kind, uri in all_cytoscape_uris().items():
+        html = html.replace("{{ICON_" + kind + "}}", uri)
+    # Legend <img> src: base64 (works in HTML img tags)
+    for kind, uri in all_img_uris().items():
+        html = html.replace("{{ICON_IMG_" + kind + "}}", uri)
+    return html
+
+_INDEX_HTML = _render_index_html()
 
 
 @dataclass
@@ -88,7 +104,7 @@ def create_app(config: ServerConfig):  # type: ignore[no-untyped-def]
     """Build the FastAPI app. Importing FastAPI here keeps it optional."""
     try:
         from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-        from fastapi.responses import FileResponse, JSONResponse
+        from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
         from fastapi.staticfiles import StaticFiles
     except ImportError as exc:  # pragma: no cover
         raise RuntimeError(
@@ -152,8 +168,8 @@ def create_app(config: ServerConfig):  # type: ignore[no-untyped-def]
     app.mount("/static", StaticFiles(directory=str(TEMPLATE_DIR)), name="static")
 
     @app.get("/")
-    async def index() -> FileResponse:
-        return FileResponse(TEMPLATE_DIR / "index.html")
+    async def index() -> HTMLResponse:
+        return HTMLResponse(_INDEX_HTML)
 
     @app.get("/graph")
     async def graph_endpoint(region: Optional[str] = None) -> JSONResponse:

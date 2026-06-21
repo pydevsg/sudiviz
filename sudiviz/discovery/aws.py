@@ -17,6 +17,7 @@ from typing import Any, Iterable, Optional
 import boto3
 
 from sudiviz.discovery.models import (
+    AuroraCluster,
     CloudProvider,
     DiscoveryResult,
     ECSCluster,
@@ -527,6 +528,70 @@ def _discover_rds_sync(session: boto3.Session, vpc_id: Optional[str]) -> list[RD
 
 
 # ---------------------------------------------------------------------------
+# Aurora cluster discovery
+# ---------------------------------------------------------------------------
+
+
+def _discover_aurora_sync(
+    session: boto3.Session,
+    vpc_id: Optional[str],
+) -> list[AuroraCluster]:
+    """Discover Aurora DB clusters (MySQL- and PostgreSQL-compatible).
+
+    Aurora uses describe_db_clusters. Regular RDS instances (non-Aurora) have
+    Engine values like 'mysql', 'postgres', 'oracle-*', etc. — we only keep
+    engines that start with 'aurora' so there is no overlap with RDS instances.
+    """
+    rds = session.client("rds", config=build_botocore_config())
+    clusters: list[AuroraCluster] = []
+
+    for page in _paginate(rds, "describe_db_clusters"):
+        for raw in page.get("DBClusters", []):
+            engine = raw.get("Engine", "")
+            if not engine.startswith("aurora"):
+                continue
+
+            cluster_vpc = raw.get("DBSubnetGroup", {}).get("VpcId") if raw.get("DBSubnetGroup") else None
+            if vpc_id and cluster_vpc and cluster_vpc != vpc_id:
+                continue
+
+            sg_ids = [
+                sg["VpcSecurityGroupId"]
+                for sg in raw.get("VpcSecurityGroups", [])
+                if sg.get("VpcSecurityGroupId")
+            ]
+            tags: dict[str, str] = {}
+            try:
+                tag_resp = rds.list_tags_for_resource(ResourceName=raw["DBClusterArn"])
+                tags = _tag_dict(tag_resp.get("TagList", []))
+            except Exception:  # noqa: BLE001
+                pass
+
+            clusters.append(
+                AuroraCluster(
+                    arn=raw["DBClusterArn"],
+                    cluster_id=raw["DBClusterIdentifier"],
+                    engine=engine,
+                    engine_version=raw.get("EngineVersion"),
+                    engine_mode=raw.get("EngineMode", "provisioned"),
+                    status=raw.get("Status", "unknown"),
+                    endpoint=raw.get("Endpoint"),
+                    reader_endpoint=raw.get("ReaderEndpoint"),
+                    port=raw.get("Port"),
+                    vpc_id=cluster_vpc,
+                    subnet_group=raw.get("DBSubnetGroup", {}).get("DBSubnetGroupName") if raw.get("DBSubnetGroup") else None,
+                    security_group_ids=sg_ids,
+                    multi_az=raw.get("MultiAZ", False),
+                    storage_encrypted=raw.get("StorageEncrypted", False),
+                    deletion_protection=raw.get("DeletionProtection", False),
+                    instance_count=len(raw.get("DBClusterMembers", [])),
+                    tags=tags,
+                )
+            )
+    return clusters
+
+
+# ---------------------------------------------------------------------------
 # Lambda discovery
 # ---------------------------------------------------------------------------
 
@@ -680,6 +745,14 @@ async def discover_rds_instances(
     return await asyncio.to_thread(_discover_rds_sync, sess, vpc_id)
 
 
+async def discover_aurora_clusters(
+    vpc_id: Optional[str] = None,
+    session: Optional[boto3.Session] = None,
+) -> list[AuroraCluster]:
+    sess = session or get_session()
+    return await asyncio.to_thread(_discover_aurora_sync, sess, vpc_id)
+
+
 async def discover_lambda_functions(
     vpc_id: Optional[str] = None,
     session: Optional[boto3.Session] = None,
@@ -768,7 +841,7 @@ async def discover_all(
     identity = await asyncio.to_thread(whoami, sess)
     tag_filter = _parse_service_tag(service_tag)
 
-    albs, tgs, sgs, ecs_clusters, eks_clusters, rds_instances, lambda_functions, s3_buckets = (
+    albs, tgs, sgs, ecs_clusters, eks_clusters, rds_instances, aurora_clusters, lambda_functions, s3_buckets = (
         await asyncio.gather(
             discover_albs(vpc_id, tag_filter, sess),
             discover_target_groups(vpc_id, sess),
@@ -776,6 +849,7 @@ async def discover_all(
             discover_ecs_clusters(vpc_id, sess),
             discover_eks_clusters(vpc_id, sess),
             discover_rds_instances(vpc_id, sess),
+            discover_aurora_clusters(vpc_id, sess),
             discover_lambda_functions(vpc_id, sess),
             discover_s3_buckets(sess),
             return_exceptions=True,
@@ -795,6 +869,7 @@ async def discover_all(
     ecs_clusters = _unwrap(ecs_clusters, "ECS")
     eks_clusters = _unwrap(eks_clusters, "EKS")
     rds_instances = _unwrap(rds_instances, "RDS")
+    aurora_clusters = _unwrap(aurora_clusters, "Aurora")
     lambda_functions = _unwrap(lambda_functions, "Lambda")
     s3_buckets = _unwrap(s3_buckets, "S3")
 
@@ -858,6 +933,7 @@ async def discover_all(
         ecs_clusters=ecs_clusters,
         eks_clusters=eks_clusters,
         rds_instances=rds_instances,
+        aurora_clusters=aurora_clusters,
         lambda_functions=lambda_functions,
         s3_buckets=s3_buckets,
     )
