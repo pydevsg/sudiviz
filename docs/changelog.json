@@ -1,5 +1,15 @@
 [
   {
+    "version": "v1.5.0",
+    "date": "2026-06-22",
+    "summary": "Real AWS architecture icons on graph nodes, Aurora cluster discovery"
+  },
+  {
+    "version": "v1.4.3",
+    "date": "2026-06-15",
+    "summary": "Collapsible sidebar drawer, fix duplicate PyPI publish"
+  },
+  {
     "version": "v1.4.2",
     "date": "2026-06-14",
     "summary": "sync branding version, anchor PyPI release in git"

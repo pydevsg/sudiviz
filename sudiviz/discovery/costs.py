@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from typing import Optional
 from .models import (
+    AuroraCluster,
     DiscoveryResult,
     LoadBalancer,
     Instance,
@@ -122,6 +123,27 @@ def estimate_lambda_cost(fn: LambdaFunction) -> float:
     return LAMBDA_MONTHLY_ESTIMATE
 
 
+def estimate_aurora_cost(cluster: AuroraCluster) -> float:
+    """Estimate monthly cost for an Aurora cluster.
+
+    Aurora Serverless v2 is billed per ACU-hour; provisioned is billed per
+    instance-hour. We use the RDS price table as a proxy for provisioned Aurora
+    (Aurora instances share the same instance classes). Serverless gets a flat
+    estimate based on typical minimum ACU usage.
+    """
+    if cluster.status not in ("available", "backing-up", "modifying"):
+        return 0.0
+
+    if cluster.engine_mode == "serverless":
+        # Aurora Serverless v2: ~0.12 USD/ACU-hour, assume 2 ACU minimum average
+        return 0.12 * 2 * HOURS_PER_MONTH
+
+    # Provisioned: use RDS price table, multiply by instance count (min 1)
+    hourly = RDS_HOURLY_PRICES.get("db.r6g.large", 0.26)  # common Aurora default
+    count = max(cluster.instance_count, 1)
+    return hourly * HOURS_PER_MONTH * count
+
+
 def estimate_s3_cost(bucket: S3Bucket) -> float:
     """Estimate monthly cost for S3 bucket (rough estimate without size data)."""
     return S3_MONTHLY_ESTIMATE
@@ -133,6 +155,8 @@ def get_resource_cost(resource_type: str, resource: any) -> Optional[float]:
         return estimate_instance_cost(resource)
     elif resource_type == "rds":
         return estimate_rds_cost(resource)
+    elif resource_type == "aurora":
+        return estimate_aurora_cost(resource)
     elif resource_type == "alb":
         return estimate_lb_cost(resource)
     elif resource_type == "eks_cluster":
@@ -193,6 +217,20 @@ def calculate_total_costs(discovery: DiscoveryResult) -> dict:
             "instance_class": rds.db_instance_class,
         }
     costs["by_service"]["RDS"] = rds_total
+
+    # Aurora
+    aurora_total = 0.0
+    for cluster in discovery.aurora_clusters:
+        cost = estimate_aurora_cost(cluster)
+        aurora_total += cost
+        costs["by_resource"][cluster.arn] = {
+            "type": "Aurora",
+            "name": cluster.cluster_id,
+            "monthly_cost": cost,
+            "engine": cluster.engine,
+            "engine_mode": cluster.engine_mode,
+        }
+    costs["by_service"]["Aurora"] = aurora_total
 
     # EKS
     eks_total = 0.0

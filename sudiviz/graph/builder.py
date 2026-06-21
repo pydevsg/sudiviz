@@ -3,7 +3,7 @@
 Node attributes:
     kind        : 'alb' | 'target_group' | 'instance' | 'security_group' | 'vpc'
                   'ecs_cluster' | 'ecs_service' | 'eks_cluster' | 'eks_nodegroup'
-                  'rds' | 'lambda' | 's3'
+                  'rds' | 'aurora' | 'lambda' | 's3'
     label       : human-readable display name
     health      : HealthStatus value (string)
     arn / id    : provider-side identifier
@@ -23,6 +23,7 @@ from typing import Any
 import networkx as nx
 
 from sudiviz.discovery.costs import (
+    estimate_aurora_cost,
     estimate_eks_cost,
     estimate_instance_cost,
     estimate_lambda_cost,
@@ -313,6 +314,28 @@ def build_graph(discovery: DiscoveryResult) -> nx.DiGraph:
             g.add_edge(db.arn, db.vpc_id, relation="in_vpc", style="solid")
         for sg_id in db.security_group_ids:
             g.add_edge(db.arn, sg_id, relation="guarded_by", style="solid")
+
+    # Aurora clusters.
+    for cluster in discovery.aurora_clusters:
+        cluster_health = HealthStatus.HEALTHY.value if cluster.is_healthy else HealthStatus.UNHEALTHY.value
+        g.add_node(
+            cluster.arn,
+            kind="aurora",
+            label=cluster.cluster_id,
+            health=cluster_health,
+            arn=cluster.arn,
+            id=cluster.arn,
+            engine=cluster.engine,
+            engine_mode=cluster.engine_mode,
+            status=cluster.status,
+            metadata=cluster.model_dump(mode="json"),
+            orphan=False,
+            monthly_cost=estimate_aurora_cost(cluster),
+        )
+        if cluster.vpc_id and cluster.vpc_id in g:
+            g.add_edge(cluster.arn, cluster.vpc_id, relation="in_vpc", style="solid")
+        for sg_id in cluster.security_group_ids:
+            g.add_edge(cluster.arn, sg_id, relation="guarded_by", style="solid")
 
     # Lambda functions.
     for fn in discovery.lambda_functions:
