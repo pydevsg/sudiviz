@@ -146,6 +146,43 @@ def console_url(resource_type: str, resource_id: str, region: str) -> str:
     return f"{base}/console/home?region={region}"
 
 
+def pricing_url(resource_type: str, metadata: dict) -> str:
+    """Build an AWS public pricing page URL for a resource type.
+
+    Always returns a valid URL — no auth required. For resources with a known
+    instance/class type we deep-link to the relevant pricing table anchor.
+    Free resources (security groups, target groups, etc.) link to the parent
+    service's pricing overview.
+    """
+    rt = resource_type.lower()
+    if rt == "instance":
+        itype = (metadata or {}).get("instance_type", "")
+        base = "https://aws.amazon.com/ec2/pricing/on-demand/"
+        return f"{base}#{itype}" if itype else base
+    if rt == "rds":
+        engine = (metadata or {}).get("engine", "")
+        if engine.startswith("aurora"):
+            return "https://aws.amazon.com/rds/aurora/pricing/"
+        return "https://aws.amazon.com/rds/pricing/"
+    if rt == "aurora":
+        return "https://aws.amazon.com/rds/aurora/pricing/"
+    if rt in ("alb", "target_group"):
+        return "https://aws.amazon.com/elasticloadbalancing/pricing/"
+    if rt == "lambda":
+        return "https://aws.amazon.com/lambda/pricing/"
+    if rt == "s3":
+        return "https://aws.amazon.com/s3/pricing/"
+    if rt in ("eks_cluster", "eks_nodegroup"):
+        return "https://aws.amazon.com/eks/pricing/"
+    if rt in ("ecs_cluster", "ecs_service"):
+        return "https://aws.amazon.com/ecs/pricing/"
+    if rt == "security_group":
+        return "https://aws.amazon.com/vpc/pricing/"
+    if rt == "vpc":
+        return "https://aws.amazon.com/vpc/pricing/"
+    return "https://aws.amazon.com/pricing/"
+
+
 def cloudwatch_metrics_url(resource_type: str, resource_id: str, region: str) -> str | None:
     """Build a CloudWatch metrics dashboard URL for a resource.
 

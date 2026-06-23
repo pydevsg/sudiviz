@@ -19,7 +19,7 @@ from rich.tree import Tree
 
 from sudiviz.discovery.costs import format_cost
 from sudiviz.discovery.models import HealthStatus
-from sudiviz.utils.auth import cloudwatch_logs_url, cloudwatch_metrics_url, console_url
+from sudiviz.utils.auth import cloudwatch_logs_url, cloudwatch_metrics_url, console_url, pricing_url
 from sudiviz.utils.branding import Colors
 
 logger = logging.getLogger(__name__)
@@ -71,6 +71,7 @@ def export_cytoscape_json(
                     "monthly_cost": monthly_cost,
                     "cost_display": cost_display,
                     "console_url": console_url(kind, attrs.get("id", node_id), region),
+                    "pricing_url": pricing_url(kind, attrs.get("metadata", {})),
                     "metrics_url": cloudwatch_metrics_url(kind, attrs.get("id", node_id), region),
                     "logs_url": cloudwatch_logs_url(kind, attrs.get("id", node_id), region),
                     "metadata": attrs.get("metadata", {}),

@@ -357,7 +357,7 @@
           <tr><th>Kind</th><td>${escapeHtml(d.kind)}</td></tr>
           <tr><th>Health</th><td>${escapeHtml(d.health)}</td></tr>
           <tr><th>Orphan</th><td>${d.orphan ? '<b style="color:#dc2626">YES</b>' : 'no'}</td></tr>
-          <tr><th>Est. Cost</th><td style="${costStyle}">${escapeHtml(costDisplay)}</td></tr>
+          <tr><th>Est. Cost</th><td style="${costStyle}"><a href="${escapeHtml(d.pricing_url)}" target="_blank" style="color:inherit;text-decoration:underline dotted">${escapeHtml(costDisplay)}</a></td></tr>
           ${extra}
           <tr><th>ARN / ID</th><td><code style="font-size:0.7em;word-break:break-all">${escapeHtml(d.id)}</code></td></tr>
         </table>
