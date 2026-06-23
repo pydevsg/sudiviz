@@ -8,7 +8,7 @@
 
 🚀 Zero AI tokens | 💸 Zero cost | 🐍 Pure Python | 🌍 Multi-region
 
-![Web Graph](https://raw.githubusercontent.com/pydevsg/sudiviz/main/docs/images/sudiviz_updated_graphical_flow.png)
+![Web Graph](https://raw.githubusercontent.com/pydevsg/sudiviz/main/docs/images/sudiviz_arch_with_aws_icons.png)
 
 ---
 
