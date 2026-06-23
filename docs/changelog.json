@@ -1,10 +1,5 @@
 [
   {
-    "version": "v1.5.1",
-    "date": "2026-06-24",
-    "summary": "Est. Cost links to AWS pricing page for each resource type"
-  },
-  {
     "version": "v1.5.0",
     "date": "2026-06-22",
     "summary": "real AWS architecture icons on graph nodes, Aurora cluster discovery"
