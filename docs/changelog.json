@@ -1,8 +1,8 @@
 [
   {
-    "version": "v1.5.2",
+    "version": "v1.5.1",
     "date": "2026-06-24",
-    "summary": "Est. Cost links to AWS pricing page, hero image updated to arch with AWS icons"
+    "summary": "v1.5.1 add pricing links to AWS resources and update version to"
   },
   {
     "version": "v1.5.0",
@@ -73,10 +73,5 @@
     "version": "v0.5.0",
     "date": "2026-05-16",
     "summary": "Added cluster grouping feature"
-  },
-  {
-    "version": "v0.4.0",
-    "date": "2026-05-15",
-    "summary": "Refactor README.md for clarity and conciseness; update feature descriptions and remove redundant sections"
   }
 ]
