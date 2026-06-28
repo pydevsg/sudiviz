@@ -24,6 +24,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install build
 
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Check if version already exists on PyPI
+        run: |
+          status=$(curl -s -o /dev/null -w "%{http_code}" "https://pypi.org/pypi/sudiviz/${{ steps.version.outputs.VERSION }}/json")
+          if [ "$status" = "200" ]; then
+            echo "::error::Version ${{ steps.version.outputs.VERSION }} already exists on PyPI. Bump the version before publishing."
+            exit 1
+          fi
+          echo "Version ${{ steps.version.outputs.VERSION }} not yet on PyPI — proceeding."
+
       - name: Build package
         run: python -m build
 

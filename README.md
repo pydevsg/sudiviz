@@ -167,6 +167,7 @@ sudiviz-mcp
 - *"Fix the unhealthy targets on my ALB"*
 - *"Check for Terraform drift against my state file"*
 - *"Run a security audit on eu-west-1"*
+- *"Triage the incident — what's unhealthy and why?"*
 
 ---
 
