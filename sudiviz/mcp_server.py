@@ -18,7 +18,17 @@ from typing import Any
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
-from mcp.types import TextContent, Tool
+from mcp.types import (
+    GetPromptResult,
+    Prompt,
+    PromptArgument,
+    PromptMessage,
+    Resource,
+    ResourceTemplate,
+    TextContent,
+    TextResourceContents,
+    Tool,
+)
 
 from sudiviz.discovery.aws import discover_all
 from sudiviz.discovery.costs import calculate_total_costs
@@ -266,6 +276,220 @@ def _resource_list_for_kind(discovery, kind: str) -> list[dict]:
     }
     resources = mapping.get(kind, [])
     return [r.model_dump(mode="json") for r in resources]
+
+
+RESOURCE_TEMPLATES = [
+    ResourceTemplate(
+        name="aws-topology",
+        uriTemplate="infra://aws/{region}/topology",
+        description="Live AWS infrastructure topology for a region as JSON.",
+        mimeType="application/json",
+    ),
+    ResourceTemplate(
+        name="aws-health",
+        uriTemplate="infra://aws/{region}/health",
+        description="Health status summary for AWS resources in a region.",
+        mimeType="application/json",
+    ),
+    ResourceTemplate(
+        name="aws-costs",
+        uriTemplate="infra://aws/{region}/costs",
+        description="Estimated monthly cost breakdown for a region.",
+        mimeType="application/json",
+    ),
+]
+
+PROMPTS = [
+    Prompt(
+        name="diagnose-infrastructure",
+        description="Analyze AWS infrastructure in a region for issues and recommend fixes.",
+        arguments=[
+            PromptArgument(name="region", description="AWS region (e.g. us-east-1)", required=False),
+            PromptArgument(name="profile", description="AWS profile name", required=False),
+        ],
+    ),
+    Prompt(
+        name="cost-optimization",
+        description="Find cost-saving opportunities in AWS infrastructure.",
+        arguments=[
+            PromptArgument(name="region", description="AWS region (e.g. us-east-1)", required=False),
+            PromptArgument(name="profile", description="AWS profile name", required=False),
+        ],
+    ),
+    Prompt(
+        name="security-audit",
+        description="Check for security misconfigurations: open security groups, public databases, unencrypted storage.",
+        arguments=[
+            PromptArgument(name="region", description="AWS region (e.g. us-east-1)", required=False),
+            PromptArgument(name="profile", description="AWS profile name", required=False),
+        ],
+    ),
+    Prompt(
+        name="incident-triage",
+        description="Trace unhealthy resources through the dependency chain to identify root cause.",
+        arguments=[
+            PromptArgument(name="region", description="AWS region (e.g. us-east-1)", required=False),
+            PromptArgument(name="profile", description="AWS profile name", required=False),
+        ],
+    ),
+]
+
+
+@app.list_resource_templates()
+async def list_resource_templates() -> list[ResourceTemplate]:
+    return RESOURCE_TEMPLATES
+
+
+@app.read_resource()
+async def read_resource(uri: str) -> list[TextResourceContents]:
+    from urllib.parse import urlparse
+
+    parsed = urlparse(str(uri))
+    if parsed.scheme != "infra" or parsed.hostname != "aws":
+        return [TextResourceContents(uri=str(uri), mimeType="application/json", text=json.dumps({"error": f"Unknown resource URI: {uri}"}))]
+
+    parts = parsed.path.strip("/").split("/")
+    if len(parts) != 2:
+        return [TextResourceContents(uri=str(uri), mimeType="application/json", text=json.dumps({"error": f"Invalid resource path: {parsed.path}"}))]
+
+    region, kind = parts
+    result = await discover_all(region=region)
+
+    if kind == "topology":
+        graph = mark_orphaned_edges(build_graph(result))
+        data = export_cytoscape_json(graph, region=region)
+    elif kind == "health":
+        graph = mark_orphaned_edges(build_graph(result))
+        diag = run_diagnosis(graph)
+        data = {
+            "region": region,
+            "account_id": result.account_id,
+            "resource_counts": {
+                "load_balancers": len(result.load_balancers),
+                "target_groups": len(result.target_groups),
+                "instances": len(result.instances),
+                "security_groups": len(result.security_groups),
+            },
+            "fix_count": len(diag.fixes),
+            "critical_count": sum(1 for f in diag.fixes if f.severity == "critical"),
+            "warning_count": sum(1 for f in diag.fixes if f.severity == "warning"),
+            "fixes": [{"title": f.title, "severity": f.severity} for f in diag.fixes],
+        }
+    elif kind == "costs":
+        data = calculate_total_costs(result)
+    else:
+        data = {"error": f"Unknown resource kind: {kind}"}
+
+    return [TextResourceContents(uri=str(uri), mimeType="application/json", text=json.dumps(data, indent=2, default=str))]
+
+
+@app.list_prompts()
+async def list_prompts() -> list[Prompt]:
+    return PROMPTS
+
+
+@app.get_prompt()
+async def get_prompt(name: str, arguments: dict[str, str] | None = None) -> GetPromptResult:
+    args = arguments or {}
+    region = args.get("region", "your default region")
+    profile = args.get("profile", "")
+    profile_note = f" using AWS profile '{profile}'" if profile else ""
+
+    if name == "diagnose-infrastructure":
+        return GetPromptResult(
+            description=f"Diagnose AWS infrastructure in {region}",
+            messages=[
+                PromptMessage(
+                    role="user",
+                    content=TextContent(
+                        type="text",
+                        text=(
+                            f"Analyze my AWS infrastructure in {region}{profile_note} for issues.\n\n"
+                            "1. First, use sudiviz_diagnose to discover resources and run diagnosis.\n"
+                            "2. Summarize the resource counts and any issues found.\n"
+                            "3. For each issue, explain the risk and recommend a fix.\n"
+                            "4. Prioritize critical issues first, then warnings.\n"
+                            "5. If there are fixable issues, show the AWS CLI commands using sudiviz_fix (dry_run=true)."
+                        ),
+                    ),
+                )
+            ],
+        )
+
+    elif name == "cost-optimization":
+        return GetPromptResult(
+            description=f"Find cost-saving opportunities in {region}",
+            messages=[
+                PromptMessage(
+                    role="user",
+                    content=TextContent(
+                        type="text",
+                        text=(
+                            f"Analyze my AWS infrastructure costs in {region}{profile_note}.\n\n"
+                            "1. Use sudiviz_costs to get the cost breakdown by service and resource.\n"
+                            "2. Identify the most expensive resources.\n"
+                            "3. Use sudiviz_diagnose to check for orphan resources that are wasting money.\n"
+                            "4. Suggest specific cost-saving actions (right-sizing, deleting orphans, reserved instances).\n"
+                            "5. Estimate potential monthly savings for each suggestion."
+                        ),
+                    ),
+                )
+            ],
+        )
+
+    elif name == "security-audit":
+        return GetPromptResult(
+            description=f"Security audit for {region}",
+            messages=[
+                PromptMessage(
+                    role="user",
+                    content=TextContent(
+                        type="text",
+                        text=(
+                            f"Perform a security audit of my AWS infrastructure in {region}{profile_note}.\n\n"
+                            "1. Use sudiviz_diagnose to discover resources and find security issues.\n"
+                            "2. Check for: open security groups (0.0.0.0/0), publicly accessible RDS, "
+                            "unencrypted S3 buckets, missing encryption at rest.\n"
+                            "3. Rate each finding by severity (critical / warning / info).\n"
+                            "4. For each finding, explain the risk and the remediation command.\n"
+                            "5. Use sudiviz_list_resources with kind='security_group' to review all SG rules."
+                        ),
+                    ),
+                )
+            ],
+        )
+
+    elif name == "incident-triage":
+        return GetPromptResult(
+            description=f"Incident triage for {region}",
+            messages=[
+                PromptMessage(
+                    role="user",
+                    content=TextContent(
+                        type="text",
+                        text=(
+                            f"Something may be wrong with my AWS infrastructure in {region}{profile_note}. Help me triage.\n\n"
+                            "1. Use sudiviz_diagnose to find all current issues.\n"
+                            "2. Use sudiviz_graph to get the topology and trace dependencies.\n"
+                            "3. Focus on critical issues first — unhealthy targets, failing health checks.\n"
+                            "4. Trace the dependency chain: ALB → Target Group → Instance → Security Group.\n"
+                            "5. Identify the root cause and suggest immediate remediation steps.\n"
+                            "6. If a fix is available, show the dry-run command with sudiviz_fix."
+                        ),
+                    ),
+                )
+            ],
+        )
+
+    return GetPromptResult(
+        description=f"Unknown prompt: {name}",
+        messages=[
+            PromptMessage(
+                role="user",
+                content=TextContent(type="text", text=f"Unknown prompt: {name}. Available prompts: diagnose-infrastructure, cost-optimization, security-audit, incident-triage."),
+            )
+        ],
+    )
 
 
 @app.list_tools()

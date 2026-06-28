@@ -144,11 +144,29 @@ sudiviz-mcp
 | `sudiviz_costs` | Estimate monthly costs by service and resource |
 | `sudiviz_list_resources` | List resources by type (alb, instance, rds, …) |
 
+**MCP Resources** (read live data without calling a tool):
+
+| Resource URI | Description |
+|-------------|-------------|
+| `infra://aws/{region}/topology` | Live topology graph as Cytoscape JSON |
+| `infra://aws/{region}/health` | Health status summary with issue counts |
+| `infra://aws/{region}/costs` | Estimated monthly cost breakdown |
+
+**MCP Prompts** (guided multi-step workflows):
+
+| Prompt | Description |
+|--------|-------------|
+| `diagnose-infrastructure` | Discover, diagnose, and recommend fixes |
+| `cost-optimization` | Find cost-saving opportunities |
+| `security-audit` | Check for open SGs, public DBs, unencrypted storage |
+| `incident-triage` | Trace unhealthy resources through dependency chain |
+
 **Example conversations with your AI agent:**
 - *"Show me all orphan resources in us-east-1"*
 - *"What's our estimated monthly spend?"*
 - *"Fix the unhealthy targets on my ALB"*
 - *"Check for Terraform drift against my state file"*
+- *"Run a security audit on eu-west-1"*
 
 ---
 

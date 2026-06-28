@@ -1,5 +1,10 @@
 [
   {
+    "version": "v1.6.1",
+    "date": "2026-06-28",
+    "summary": "MCP Resources and Prompts — AI agents can read cached topology/health/costs and use guided prompt workflows"
+  },
+  {
     "version": "v1.6.0",
     "date": "2026-06-28",
     "summary": "added MCP server for AI-driven infrastructure management and update version to 1.6.0"

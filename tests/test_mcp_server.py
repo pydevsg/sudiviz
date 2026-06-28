@@ -24,7 +24,17 @@ from sudiviz.discovery.models import (
     Target,
     TargetGroup,
 )
-from sudiviz.mcp_server import TOOLS, call_tool, list_tools
+from sudiviz.mcp_server import (
+    PROMPTS,
+    RESOURCE_TEMPLATES,
+    TOOLS,
+    call_tool,
+    get_prompt,
+    list_prompts,
+    list_resource_templates,
+    list_tools,
+    read_resource,
+)
 
 
 def _fake_discovery(**overrides) -> DiscoveryResult:
@@ -378,3 +388,144 @@ async def test_unknown_tool_returns_error():
     result = await call_tool("sudiviz_nonexistent", {})
     payload = json.loads(result[0].text)
     assert "error" in payload
+
+
+# ---------------------------------------------------------------------------
+# MCP Resource Templates
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_list_resource_templates():
+    templates = await list_resource_templates()
+    names = {t.name for t in templates}
+    assert "aws-topology" in names
+    assert "aws-health" in names
+    assert "aws-costs" in names
+    assert len(templates) == 3
+
+
+def test_resource_templates_constant():
+    assert len(RESOURCE_TEMPLATES) == 3
+    for t in RESOURCE_TEMPLATES:
+        assert t.uriTemplate.startswith("infra://aws/")
+        assert t.mimeType == "application/json"
+
+
+@pytest.mark.asyncio
+@patch("sudiviz.mcp_server.discover_all", new_callable=AsyncMock)
+async def test_read_resource_topology(mock_discover):
+    mock_discover.return_value = _fake_discovery()
+    result = await read_resource("infra://aws/us-east-1/topology")
+    assert len(result) == 1
+    payload = json.loads(result[0].text)
+    assert "nodes" in payload
+    assert "edges" in payload
+
+
+@pytest.mark.asyncio
+@patch("sudiviz.mcp_server.discover_all", new_callable=AsyncMock)
+async def test_read_resource_health(mock_discover):
+    mock_discover.return_value = _fake_discovery()
+    result = await read_resource("infra://aws/us-east-1/health")
+    payload = json.loads(result[0].text)
+    assert "region" in payload
+    assert "fix_count" in payload
+    assert "critical_count" in payload
+    assert "warning_count" in payload
+    assert isinstance(payload["fixes"], list)
+
+
+@pytest.mark.asyncio
+@patch("sudiviz.mcp_server.discover_all", new_callable=AsyncMock)
+async def test_read_resource_costs(mock_discover):
+    mock_discover.return_value = _fake_discovery()
+    result = await read_resource("infra://aws/us-east-1/costs")
+    payload = json.loads(result[0].text)
+    assert "total_monthly" in payload
+    assert "by_service" in payload
+
+
+@pytest.mark.asyncio
+async def test_read_resource_unknown_scheme():
+    result = await read_resource("ftp://aws/us-east-1/topology")
+    payload = json.loads(result[0].text)
+    assert "error" in payload
+
+
+@pytest.mark.asyncio
+async def test_read_resource_unknown_kind():
+    result = await read_resource("infra://aws/us-east-1/unknown_kind")
+    payload = json.loads(result[0].text)
+    assert "error" in payload
+
+
+# ---------------------------------------------------------------------------
+# MCP Prompts
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_list_prompts_returns_all():
+    prompts = await list_prompts()
+    names = {p.name for p in prompts}
+    assert "diagnose-infrastructure" in names
+    assert "cost-optimization" in names
+    assert "security-audit" in names
+    assert "incident-triage" in names
+    assert len(prompts) == 4
+
+
+def test_prompts_constant():
+    assert len(PROMPTS) == 4
+    for p in PROMPTS:
+        assert p.description
+        assert p.arguments is not None
+
+
+@pytest.mark.asyncio
+async def test_get_prompt_diagnose():
+    result = await get_prompt("diagnose-infrastructure", {"region": "eu-west-1", "profile": "prod"})
+    assert result.description == "Diagnose AWS infrastructure in eu-west-1"
+    assert len(result.messages) == 1
+    text = result.messages[0].content.text
+    assert "eu-west-1" in text
+    assert "prod" in text
+    assert "sudiviz_diagnose" in text
+
+
+@pytest.mark.asyncio
+async def test_get_prompt_cost_optimization():
+    result = await get_prompt("cost-optimization", {"region": "us-east-1"})
+    assert "cost" in result.description.lower()
+    text = result.messages[0].content.text
+    assert "sudiviz_costs" in text
+
+
+@pytest.mark.asyncio
+async def test_get_prompt_security_audit():
+    result = await get_prompt("security-audit", {})
+    text = result.messages[0].content.text
+    assert "security" in text.lower()
+    assert "sudiviz_diagnose" in text
+
+
+@pytest.mark.asyncio
+async def test_get_prompt_incident_triage():
+    result = await get_prompt("incident-triage", {"region": "ap-southeast-1"})
+    text = result.messages[0].content.text
+    assert "ap-southeast-1" in text
+    assert "sudiviz_graph" in text
+
+
+@pytest.mark.asyncio
+async def test_get_prompt_unknown():
+    result = await get_prompt("nonexistent-prompt", {})
+    assert "Unknown prompt" in result.messages[0].content.text
+
+
+@pytest.mark.asyncio
+async def test_get_prompt_no_arguments():
+    result = await get_prompt("diagnose-infrastructure", None)
+    text = result.messages[0].content.text
+    assert "your default region" in text
