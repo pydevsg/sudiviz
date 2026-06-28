@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sudiviz"
-version = "1.5.2"
+version = "1.6.0"
 description = "Sufficient visibility into cloud infrastructure failures — live AWS topology + Terraform drift in one CLI."
 readme = "README.md"
 license = { text = "GPL-3.0-or-later" }
@@ -49,6 +49,9 @@ diagrams = [
 terraform = [
     "python-terraform>=0.10",
 ]
+mcp = [
+    "mcp>=1.0",
+]
 all = [
     "textual>=0.50.0",
     "fastapi>=0.115.0",
@@ -56,6 +59,7 @@ all = [
     "websockets>=13.0",
     "diagrams>=0.23",
     "python-terraform>=0.10",
+    "mcp>=1.0",
 ]
 dev = [
     "pytest>=8.0",
@@ -67,6 +71,7 @@ dev = [
 
 [project.scripts]
 sudiviz = "sudiviz.cli:app"
+sudiviz-mcp = "sudiviz.mcp_server:cli_main"
 
 [tool.bandit]
 exclude_dirs = ["tests", "docs", ".venv"]

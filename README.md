@@ -49,6 +49,7 @@ sudiviz fix --apply
 | **Cluster Grouping** | Group resources by service type (Load Balancers, ECS, Security, etc.) |
 | **Terraform Drift** | Compare live AWS vs Terraform state |
 | **Multi-Service** | ALB, EC2, ECS, EKS, RDS, Lambda, S3, Security Groups |
+| **MCP Server** | AI agents can discover, diagnose, and fix infrastructure via natural language |
 
 ---
 
@@ -94,6 +95,60 @@ sudiviz fix --apply --force    # Include destructive operations
 - RDS public accessibility
 - Orphan target groups (with `--force`)
 - Unused security groups (with `--force`)
+
+---
+
+## 🤖 MCP Server (Agentic AI)
+
+sudiviz ships an [MCP](https://modelcontextprotocol.io/) server so AI agents (Claude Desktop, Claude Code, Cursor, etc.) can discover, diagnose, and remediate your infrastructure via natural language.
+
+```bash
+pip install 'sudiviz[mcp]'
+
+# Start the MCP server (stdio transport)
+sudiviz-mcp
+```
+
+**Add to Claude Desktop** (`~/Library/Application Support/Claude/claude_desktop_config.json`):
+```json
+{
+  "mcpServers": {
+    "sudiviz": {
+      "command": "sudiviz-mcp",
+      "env": { "AWS_PROFILE": "production" }
+    }
+  }
+}
+```
+
+**Add to Claude Code** (`.mcp.json` in your project root):
+```json
+{
+  "mcpServers": {
+    "sudiviz": {
+      "command": "sudiviz-mcp"
+    }
+  }
+}
+```
+
+**Available MCP tools:**
+
+| Tool | Description |
+|------|-------------|
+| `sudiviz_discover` | Discover live AWS resources (ALB, EC2, RDS, Lambda, S3, …) |
+| `sudiviz_diagnose` | Discover + analyze for issues (orphans, unhealthy, misconfig) |
+| `sudiviz_graph` | Generate Cytoscape.js topology JSON |
+| `sudiviz_fix` | Generate or apply remediation commands |
+| `sudiviz_drift` | Compare Terraform state vs live AWS |
+| `sudiviz_costs` | Estimate monthly costs by service and resource |
+| `sudiviz_list_resources` | List resources by type (alb, instance, rds, …) |
+
+**Example conversations with your AI agent:**
+- *"Show me all orphan resources in us-east-1"*
+- *"What's our estimated monthly spend?"*
+- *"Fix the unhealthy targets on my ALB"*
+- *"Check for Terraform drift against my state file"*
 
 ---
 
@@ -197,6 +252,7 @@ sudiviz drift --tfstate tfstate.json --json
 | Cluster grouping | ✅ | ❌ | ❌ |
 | Terraform drift | ✅ | ❌ | ❌ |
 | Orphan detection | ✅ | ❌ | ❌ |
+| MCP / AI agent | ✅ | ❌ | ❌ |
 | Free & open source | ✅ GPL-3.0 | $29/mo | $49/mo |
 
 ---
@@ -254,6 +310,7 @@ sudiviz drift --tfstate tfstate.json --json
 ```
 sudiviz/
 ├── cli.py           # Typer commands
+├── mcp_server.py    # MCP server for AI agents
 ├── tui.py           # Textual TUI
 ├── web.py           # FastAPI + WebSocket
 ├── discovery/       # AWS discovery (boto3)

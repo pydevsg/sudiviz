@@ -1,5 +1,15 @@
 [
   {
+    "version": "v1.6.0",
+    "date": "2026-06-28",
+    "summary": "MCP server for agentic infrastructure — expose discover, diagnose, fix, drift, costs, and graph as MCP tools"
+  },
+  {
+    "version": "v1.5.2",
+    "date": "2026-06-24",
+    "summary": "v1.5.2 added latest architecture workflow diagram with AWS icons in README"
+  },
+  {
     "version": "v1.5.1",
     "date": "2026-06-24",
     "summary": "v1.5.1 add pricing links to AWS resources and update version to"
