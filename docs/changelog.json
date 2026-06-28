@@ -2,7 +2,7 @@
   {
     "version": "v1.6.0",
     "date": "2026-06-28",
-    "summary": "MCP server for agentic infrastructure — expose discover, diagnose, fix, drift, costs, and graph as MCP tools"
+    "summary": "added MCP server for AI-driven infrastructure management and update version to 1.6.0"
   },
   {
     "version": "v1.5.2",
@@ -73,15 +73,5 @@
     "version": "v0.7.0",
     "date": "2026-05-20",
     "summary": "Added FinOps cost heatmap and Bandit security scanning"
-  },
-  {
-    "version": "v0.6.0",
-    "date": "2026-05-20",
-    "summary": "Add cost estimation feature and visualization to README, graph, and web UI"
-  },
-  {
-    "version": "v0.5.0",
-    "date": "2026-05-16",
-    "summary": "Added cluster grouping feature"
   }
 ]
