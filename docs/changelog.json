@@ -2,7 +2,7 @@
   {
     "version": "v1.6.2",
     "date": "2026-06-28",
-    "summary": "Add PyPI duplicate version check to publish workflow, prevent re-publishing existing versions"
+    "summary": "added MCP resources and prompts for AWS infrastructure management"
   },
   {
     "version": "v1.6.1",
@@ -73,10 +73,5 @@
     "version": "v1.0.0",
     "date": "2026-05-22",
     "summary": "Security hardening, landing page, XSS protection"
-  },
-  {
-    "version": "v0.7.1",
-    "date": "2026-05-20",
-    "summary": "Fix Bandit security scan config"
   }
 ]
