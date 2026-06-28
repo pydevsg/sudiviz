@@ -2,7 +2,7 @@
   {
     "version": "v1.6.1",
     "date": "2026-06-28",
-    "summary": "MCP Resources and Prompts — AI agents can read cached topology/health/costs and use guided prompt workflows"
+    "summary": "added MCP resources and prompts for AWS infrastructure management"
   },
   {
     "version": "v1.6.0",
@@ -73,10 +73,5 @@
     "version": "v0.7.1",
     "date": "2026-05-20",
     "summary": "Fix Bandit security scan config"
-  },
-  {
-    "version": "v0.7.0",
-    "date": "2026-05-20",
-    "summary": "Added FinOps cost heatmap and Bandit security scanning"
   }
 ]
