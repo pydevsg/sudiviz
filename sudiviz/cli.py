@@ -2,6 +2,7 @@
 
 Subcommands:
     diagnose   live discovery + analysis (default)
+    explain    AI-powered analysis of diagnostic findings via Amazon Bedrock
     fix        generate or apply remediation for diagnosed issues
     drift      compare Terraform state against live AWS
     graph      export to PNG or launch web server
@@ -111,6 +112,132 @@ def diagnose(
 
     if any(f.severity == "critical" for f in diag.fixes):
         raise typer.Exit(2)
+
+
+# ---------------------------------------------------------------------------
+# explain
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def explain(
+    question: Optional[str] = typer.Argument(
+        None, help="Optional question to focus the AI analysis, e.g. 'why is my target group unhealthy?'"
+    ),
+    vpc_id: Optional[str] = typer.Option(None, "--vpc-id", help="Filter discovery to one VPC"),
+    service_tag: Optional[str] = typer.Option(
+        None, "--service-tag", help="Tag filter, e.g. 'Service=checkout' or 'k=v,k2=v2'"
+    ),
+    profile: Optional[str] = typer.Option(None, "--profile", help="AWS profile to use"),
+    region: Optional[str] = typer.Option(None, "--region", help="AWS region override"),
+    verbose: bool = typer.Option(False, "-v", "--verbose"),
+) -> None:
+    """AI-powered analysis of diagnostic findings using Amazon Bedrock (Nova Lite).
+
+    Runs the diagnostic engine, then sends findings to Amazon Bedrock for
+    holistic analysis — connecting dots across findings, identifying root
+    causes, and producing a prioritised action plan in plain English.
+
+    Requires Amazon Bedrock model access for amazon.nova-lite-v1:0 in your
+    configured region. Uses standard boto3 credential chain.
+
+    Examples:
+        sudiviz explain                                    # general analysis
+        sudiviz explain "why is my target group unhealthy?"  # focused question
+    """
+    _setup_logging(verbose)
+
+    try:
+        import boto3
+        from botocore.exceptions import ClientError
+    except ImportError:
+        console.print(
+            "[red]boto3 is required for the explain command.[/red]\n"
+            "[dim]Install it with: pip install boto3[/dim]"
+        )
+        raise typer.Exit(1)
+
+    console.print("[cyan]Running diagnostic engine…[/cyan]")
+    discovery = asyncio.run(
+        discover_all(vpc_id=vpc_id, service_tag=service_tag, profile=profile, region=region)
+    )
+    graph = mark_orphaned_edges(build_graph(discovery))
+    diag = run_diagnosis(graph)
+
+    if not diag.fixes:
+        console.print("[green]No issues found — nothing to explain![/green]")
+        return
+
+    findings_text = json.dumps(diag.to_dict(), indent=2, default=str)
+
+    if question:
+        system_prompt = (
+            "You are an AWS infrastructure expert. You will receive a structured JSON "
+            "diagnostic report from sudiviz and a specific question from the user. "
+            "Answer ONLY the user's question directly and concisely. Do not provide "
+            "a full diagnosis or list all findings — just answer the question. "
+            "Keep it short: a few sentences or a short bullet list at most. "
+            "Do NOT repeat the raw JSON back."
+        )
+        user_message = (
+            f"Question: {question}\n\n"
+            f"Diagnostic context:\n```json\n{findings_text}\n```"
+        )
+    else:
+        system_prompt = (
+            "You are an AWS infrastructure expert. You will receive a structured JSON "
+            "diagnostic report from sudiviz, a tool that analyses live AWS infrastructure. "
+            "Your job is to:\n"
+            "1. Explain the findings in plain English — what is broken and WHY.\n"
+            "2. Connect dots across findings to identify root causes (e.g. a single "
+            "misconfiguration causing multiple symptoms).\n"
+            "3. Produce a prioritised action plan, most critical items first.\n"
+            "4. Be concise but thorough. Use bullet points and clear headings.\n"
+            "Do NOT repeat the raw JSON back. Synthesise and explain."
+        )
+        user_message = f"Here are the diagnostic findings:\n\n```json\n{findings_text}\n```"
+
+    console.print("[cyan]Analysing findings…[/cyan]\n")
+
+    try:
+        bedrock = boto3.client(
+            "bedrock-runtime",
+            region_name=region or discovery.region or None,
+        )
+        response = bedrock.converse_stream(
+            modelId="amazon.nova-lite-v1:0",
+            system=[{"text": system_prompt}],
+            messages=[{"role": "user", "content": [{"text": user_message}]}],
+            inferenceConfig={"maxTokens": 4096, "temperature": 0.3},
+        )
+
+        for event in response["stream"]:
+            if "contentBlockDelta" in event:
+                delta = event["contentBlockDelta"].get("delta", {})
+                text = delta.get("text", "")
+                if text:
+                    console.print(text, end="", highlight=False)
+
+        console.print()
+
+    except ClientError as exc:
+        error_code = exc.response["Error"]["Code"]
+        if error_code in ("AccessDeniedException", "ValidationException"):
+            console.print(
+                f"\n[red]Bedrock error ({error_code}):[/red] {exc.response['Error']['Message']}\n"
+                "[dim]Ensure you have enabled access to the Amazon Nova Lite model "
+                "(amazon.nova-lite-v1:0) in your AWS region via the Bedrock console.[/dim]"
+            )
+        else:
+            console.print(f"\n[red]AWS error:[/red] {exc}")
+        raise typer.Exit(1)
+    except Exception as exc:  # noqa: BLE001
+        console.print(f"\n[red]Failed to invoke Bedrock:[/red] {exc}")
+        console.print(
+            "[dim]Make sure boto3 is installed, AWS credentials are configured, "
+            "and Amazon Nova Lite model access is enabled in your region.[/dim]"
+        )
+        raise typer.Exit(1)
 
 
 # ---------------------------------------------------------------------------

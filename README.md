@@ -20,6 +20,9 @@ pip install 'sudiviz[all]'
 # Diagnose your infrastructure
 sudiviz diagnose
 
+# Explain findings in plain English (via Bedrock)
+sudiviz explain
+
 # Interactive web visualization
 sudiviz graph --output web --open
 
@@ -49,6 +52,7 @@ sudiviz fix --apply
 | **Cluster Grouping** | Group resources by service type (Load Balancers, ECS, Security, etc.) |
 | **Terraform Drift** | Compare live AWS vs Terraform state |
 | **Multi-Service** | ALB, EC2, ECS, EKS, RDS, Lambda, S3, Security Groups |
+| **Explain** | Send diagnostic findings to Amazon Bedrock (Nova Lite) for root-cause analysis and prioritised action plans |
 | **MCP Server** | AI agents can discover, diagnose, and fix infrastructure via natural language |
 
 ---
@@ -95,6 +99,30 @@ sudiviz fix --apply --force    # Include destructive operations
 - RDS public accessibility
 - Orphan target groups (with `--force`)
 - Unused security groups (with `--force`)
+
+---
+
+## 🧠 Explain (Amazon Bedrock)
+
+Sends diagnostic findings to Amazon Bedrock (Nova Lite) for holistic, AI-powered analysis — root causes, connected dots across findings, and a prioritised action plan.
+
+```bash
+# General analysis of all findings
+sudiviz explain
+
+# Ask a specific question
+sudiviz explain "why is my target group unhealthy?"
+sudiviz explain "why do I have no resources in us-east-2?"
+
+# With AWS options
+sudiviz explain --region us-east-1 --profile prod
+```
+
+**Requirements:**
+- AWS credentials with `bedrock:InvokeModelWithResponseStream` permission (or `AmazonBedrockFullAccess` managed policy)
+- Amazon Nova Lite model access enabled in your region
+
+> **Cost:** ~$0.0001–0.0004 per invocation (Amazon Nova Lite pricing: $0.06/1M input tokens, $0.24/1M output tokens)
 
 ---
 
@@ -265,6 +293,7 @@ sudiviz drift --tfstate tfstate.json --json
 | AWS resource icons | ✅ | ✅ | ✅ |
 | Multi-region switcher | ✅ | ✅ | ✅ |
 | Auto-fix | ✅ | ❌ | ❌ |
+| AI explain | ✅ | ❌ | ❌ |
 | Traffic animation | ✅ | ❌ | ❌ |
 | Health heatmaps | ✅ | ❌ | ❌ |
 | Cost heatmap | ✅ | ❌ | ❌ |
@@ -280,6 +309,9 @@ sudiviz drift --tfstate tfstate.json --json
 
 **Read-only** (`sudiviz diagnose`):
 - `ReadOnlyAccess` AWS managed policy
+
+**AI Explain** (`sudiviz explain`):
+- `AmazonBedrockFullAccess` (or a scoped inline policy for `bedrock:InvokeModel` + `bedrock:InvokeModelWithResponseStream`)
 
 **Write** (`sudiviz fix --apply`):
 - `AmazonEC2FullAccess`

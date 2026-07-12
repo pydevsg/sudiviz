@@ -1,5 +1,10 @@
 [
   {
+    "version": "v1.7.0",
+    "date": "2026-07-12",
+    "summary": "added AI powered explaination embedding to Amazon Bedrock Nova Lite for holistic infrastructure analysis"
+  },
+  {
     "version": "v1.6.2",
     "date": "2026-06-28",
     "summary": "Add PyPI duplicate version check to publish workflow, prevent re-publishing existing versions"
