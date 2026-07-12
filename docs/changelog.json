@@ -73,10 +73,5 @@
     "version": "v1.2.0",
     "date": "2026-06-05",
     "summary": "CloudWatch Logs button, license update to GPL-3.0"
-  },
-  {
-    "version": "v1.1.0",
-    "date": "2026-06-01",
-    "summary": "Changed license from MIT to GPL-3.0-or-later in LICENSE, README.md, and pyproject.toml."
   }
 ]
