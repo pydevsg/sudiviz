@@ -1,6 +1,6 @@
 # 🔬 sudiviz
 
-[![Website](https://img.shields.io/badge/Website-sudiviz-blue?style=flat-square)](https://pydevsg.github.io/sudiviz) [![PyPI](https://img.shields.io/pypi/v/sudiviz?style=flat-square)](https://pypi.org/project/sudiviz/) [![License](https://img.shields.io/badge/license-GPL--3.0--or--later-green?style=flat-square)](LICENSE)
+[![Website](https://img.shields.io/badge/Website-sudiviz-blue?style=flat-square)](https://pydevsg.github.io/sudiviz) [![Downloads](https://static.pepy.tech/badge/sudiviz)](https://pepy.tech/projects/sudiviz) [![PyPI](https://img.shields.io/pypi/v/sudiviz?style=flat-square)](https://pypi.org/project/sudiviz/) [![License](https://img.shields.io/badge/license-GPL--3.0--or--later-green?style=flat-square)](LICENSE)
 
 > *X-ray vision for your cloud infrastructure*
 
