@@ -2,7 +2,7 @@
   {
     "version": "v1.7.0",
     "date": "2026-07-12",
-    "summary": "added AI powered explaination embedding to Amazon Bedrock Nova Lite for holistic infrastructure analysis"
+    "summary": "added explain command for Bedrock-powered infrastructure analysis"
   },
   {
     "version": "v1.6.2",
@@ -73,10 +73,5 @@
     "version": "v1.1.0",
     "date": "2026-06-01",
     "summary": "Changed license from MIT to GPL-3.0-or-later in LICENSE, README.md, and pyproject.toml."
-  },
-  {
-    "version": "v1.0.0",
-    "date": "2026-05-22",
-    "summary": "Security hardening, landing page, XSS protection"
   }
 ]
