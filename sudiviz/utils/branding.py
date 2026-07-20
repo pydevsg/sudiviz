@@ -6,7 +6,7 @@ The version bump to 0.2.0 marks the introduction of dynamic visualization
 """
 from __future__ import annotations
 
-VERSION = "1.7.1"
+VERSION = "1.7.2"
 
 LOGO = r"""
                     _ _       _

@@ -64,6 +64,8 @@ h1 { font-size: 2.4rem; font-weight: 700; letter-spacing: -0.02em; }
 .btn-primary { background: var(--accent); color: white; }
 .btn-secondary { background: var(--card); color: var(--text); border: 1px solid #334155; }
 .btn-pypi { background: #3775a9; color: white; }
+.btn-coffee { background: #ffdd00; color: #0d0d0d; font-weight: 600; }
+.btn-coffee:hover { background: #ffcc00; }
 
 /* Version banner */
 .version-banner {

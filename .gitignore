@@ -20,8 +20,5 @@ sudiviz.png
 # Claude Code local settings (contains machine-specific paths)
 .claude/
 
-# Personal/marketing content
-LINKEDIN_POST.md
-
-# Demo docs with real AWS resources
-docs/demo-broken-alb.md
+#agentic workflow
+AGENTIC_WORKFLOW.md

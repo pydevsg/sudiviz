@@ -37,7 +37,7 @@ async function loadChangelog() {
 
 function typeCommand() {
   const el = document.getElementById('typed-cmd');
-  const text = 'pip install sudiviz';
+  const text = 'pip install sudiviz[all]';
   let i = 0;
   el.textContent = '';
   const typing = setInterval(() => {
