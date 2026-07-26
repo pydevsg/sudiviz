@@ -1,5 +1,10 @@
 [
   {
+    "version": "v1.7.3",
+    "date": "2026-07-26",
+    "summary": "footer links open in new tab, version bump"
+  },
+  {
     "version": "v1.7.2",
     "date": "2026-07-20",
     "summary": "added buy me a coffee page"
