@@ -2,7 +2,7 @@
   {
     "version": "v1.7.3",
     "date": "2026-07-26",
-    "summary": "footer links open in new tab, version bump"
+    "summary": "footer links open in new tab"
   },
   {
     "version": "v1.7.2",
@@ -73,10 +73,5 @@
     "version": "v1.3.0",
     "date": "2026-06-12",
     "summary": "Multi-region support, AWS resource icons, graph topology fixes"
-  },
-  {
-    "version": "v1.2.1",
-    "date": "2026-06-09",
-    "summary": "Fix README license references to GPL-3.0"
   }
 ]
