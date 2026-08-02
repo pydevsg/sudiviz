@@ -301,8 +301,8 @@ sudiviz drift --tfstate tfstate.json --json
 | Terraform drift | ✅ | ❌ | ❌ |
 | Orphan detection | ✅ | ❌ | ❌ |
 | MCP / AI agent | ✅ | ❌ | ❌ |
-| Free & open source | ✅ GPL-3.0 | $29/mo | $49/mo |
-
+| Price | ✅ Free  | $29/mo | $49/mo |
+| License | ✅ GPL-3.0 | N/A | N/A |
 ---
 
 ## 🔐 IAM Permissions
