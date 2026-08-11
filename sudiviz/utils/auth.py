@@ -44,7 +44,7 @@ def build_botocore_config(
         retries={"max_attempts": max_attempts, "mode": "adaptive"},
         connect_timeout=connect_timeout,
         read_timeout=read_timeout,
-        user_agent_extra="sudiviz/0.3.0",
+        user_agent_extra="sudiviz/1.7.4",
     )
 
 

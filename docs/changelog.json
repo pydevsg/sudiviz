@@ -1,5 +1,10 @@
 [
   {
+    "version": "v1.7.4",
+    "date": "2026-08-11",
+    "summary": "added live download stats from pepy.tech to landing page"
+  },
+  {
     "version": "v1.7.3",
     "date": "2026-07-26",
     "summary": "footer links open in new tab"

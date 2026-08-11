@@ -129,6 +129,45 @@ h1 { font-size: 2.4rem; font-weight: 700; letter-spacing: -0.02em; }
   50%       { opacity: 0; }
 }
 
+/* Download Stats Card */
+.download-stats-card {
+  display: block;
+  background: var(--card);
+  border: 1px solid #334155;
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-top: 12px;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.2s, transform 0.15s;
+}
+.download-stats-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+.stats-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.stats-icon { font-size: 1.1rem; }
+.stats-title { font-weight: 600; font-size: 0.9rem; }
+.stats-link {
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--accent);
+  font-weight: 500;
+}
+.stats-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pepy-badge {
+  height: 20px;
+}
+
 /* Features */
 .features {
   display: grid;
