@@ -73,10 +73,5 @@
     "version": "v1.4.0",
     "date": "2026-06-14",
     "summary": "Added API endpoint for force refreshing AWS discovery"
-  },
-  {
-    "version": "v1.3.0",
-    "date": "2026-06-12",
-    "summary": "Multi-region support, AWS resource icons, graph topology fixes"
   }
 ]
