@@ -22,7 +22,7 @@ body {
 .container { max-width: 1000px; margin: 0 auto; padding: 24px 20px; }
 
 /* Hero */
-header { margin-bottom: 32px; }
+header { margin-bottom: 16px; }
 
 .hero {
   display: grid;
@@ -129,6 +129,48 @@ h1 { font-size: 2.4rem; font-weight: 700; letter-spacing: -0.02em; }
   50%       { opacity: 0; }
 }
 
+/* Try Go + Download Stats strip */
+.try-go-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.try-go-strip .try-go-inner {
+  display: flex;
+  align-items: center;
+  text-decoration: none;
+  color: inherit;
+  background: linear-gradient(135deg, #0a2540 0%, #1a3a5c 100%);
+  border: 1px solid #00acd7;
+  border-radius: 10px;
+  padding: 16px 20px;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.try-go-strip .try-go-inner:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 172, 215, 0.2);
+}
+.try-go-text {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.try-go-text .go-logo { width: 40px; height: 36px; flex-shrink: 0; }
+.try-go-label { font-weight: 700; font-size: 0.95rem; white-space: nowrap; }
+.try-go-sublabel { font-size: 0.75rem; color: var(--muted); white-space: nowrap; }
+.btn-go {
+  background: #00acd7;
+  color: #fff;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 7px 14px;
+  font-size: 0.8rem;
+}
+.btn-go:hover { background: #009ec0; }
+
 /* Download Stats Card */
 .download-stats-card {
   display: block;
@@ -136,7 +178,6 @@ h1 { font-size: 2.4rem; font-weight: 700; letter-spacing: -0.02em; }
   border: 1px solid #334155;
   border-radius: 10px;
   padding: 14px 18px;
-  margin-top: 12px;
   text-decoration: none;
   color: inherit;
   transition: border-color 0.2s, transform 0.15s;
@@ -208,6 +249,9 @@ footer a:hover { text-decoration: underline; }
 /* Responsive */
 @media (max-width: 680px) {
   .hero { grid-template-columns: 1fr; }
+  .try-go-strip { grid-template-columns: 1fr; }
+  .try-go-text { justify-content: center; text-align: center; }
+  .btn-go { margin-left: 0; }
   .features { grid-template-columns: repeat(2, 1fr); }
 }
 
