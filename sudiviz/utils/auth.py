@@ -93,13 +93,27 @@ def whoami(session: Optional[boto3.Session] = None) -> AwsIdentity:
     )
 
 
-def console_url(resource_type: str, resource_id: str, region: str) -> str:
-    """Build an AWS Console deep link for a resource.
+def console_url(
+    resource_type: str,
+    resource_id: str,
+    region: str,
+    provider: str = "aws",
+    project: str | None = None,
+) -> str:
+    """Build a cloud Console deep link for a resource.
 
     Used by the web visualization so clicking a node jumps straight to the
     relevant Console page. `resource_type` is the sudiviz-internal kind:
     'alb', 'target_group', 'instance', 'security_group', 'vpc'.
+
+    When ``provider`` is ``"gcp"``, dispatches to GCP Cloud Console URLs.
     """
+    if provider == "gcp":
+        from sudiviz.utils.gcp_auth import gcp_console_url
+
+        return gcp_console_url(
+            resource_type, resource_id, project or "unknown-project", region
+        )
     base = f"https://{region}.console.aws.amazon.com"
     rt = resource_type.lower()
     if rt == "alb":
@@ -146,14 +160,24 @@ def console_url(resource_type: str, resource_id: str, region: str) -> str:
     return f"{base}/console/home?region={region}"
 
 
-def pricing_url(resource_type: str, metadata: dict) -> str:
-    """Build an AWS public pricing page URL for a resource type.
+def pricing_url(
+    resource_type: str,
+    metadata: dict,
+    provider: str = "aws",
+) -> str:
+    """Build a public pricing page URL for a resource type.
 
     Always returns a valid URL — no auth required. For resources with a known
     instance/class type we deep-link to the relevant pricing table anchor.
     Free resources (security groups, target groups, etc.) link to the parent
     service's pricing overview.
+
+    When ``provider`` is ``"gcp"``, dispatches to GCP pricing pages.
     """
+    if provider == "gcp":
+        from sudiviz.utils.gcp_auth import gcp_pricing_url
+
+        return gcp_pricing_url(resource_type)
     rt = resource_type.lower()
     if rt == "instance":
         itype = (metadata or {}).get("instance_type", "")

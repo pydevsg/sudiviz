@@ -26,6 +26,7 @@ from typing import Any, Optional
 import networkx as nx
 
 from sudiviz.discovery.aws import discover_all
+from sudiviz.discovery.models import CloudProvider
 from sudiviz.graph.analyzer import diagnose, mark_orphaned_edges
 from sudiviz.graph.builder import build_graph
 from sudiviz.graph.visualizer import export_cytoscape_json
@@ -57,6 +58,8 @@ class ServerConfig:
     service_tag: Optional[str] = None
     profile: Optional[str] = None
     region: Optional[str] = None
+    provider: str = "aws"
+    project: Optional[str] = None
     refresh_interval: float = 30.0
 
 
@@ -111,35 +114,63 @@ def create_app(config: ServerConfig):  # type: ignore[no-untyped-def]
             "FastAPI is not installed. Install the web extras: `pip install sudiviz[web]`."
         ) from exc
 
-    # Per-region cache: region_str → CachedState
+    # Per-(provider, region) cache → CachedState
     region_cache: dict[str, CachedState] = {}
     hub = WebSocketHub()
 
-    def _get_state(region: Optional[str]) -> CachedState:
-        key = region or config.region or "default"
+    def _cache_key(provider: Optional[str], region: Optional[str]) -> str:
+        p = provider or config.provider or "aws"
+        r = region or config.region or "default"
+        return f"{p}:{r}"
+
+    def _get_state(provider: Optional[str] = None, region: Optional[str] = None) -> CachedState:
+        key = _cache_key(provider, region)
         if key not in region_cache:
             region_cache[key] = CachedState()
         return region_cache[key]
 
-    async def refresh_region(region: Optional[str]) -> CachedState:
-        state = _get_state(region)
-        try:
-            discovery = await discover_all(
-                vpc_id=config.vpc_id,
-                service_tag=config.service_tag,
-                profile=config.profile,
+    async def _discover(provider: str, region: Optional[str]):
+        """Dispatch discovery to the correct provider."""
+        if provider == "gcp":
+            try:
+                from sudiviz.discovery.gcp import discover_all_gcp
+            except ImportError as exc:
+                raise RuntimeError(
+                    "GCP SDK not installed. Install with: pip install sudiviz[gcp]"
+                ) from exc
+            return await discover_all_gcp(
+                project=config.project,
                 region=region or config.region,
+                vpc_network=config.vpc_id,
+                service_tag=config.service_tag,
             )
+        return await discover_all(
+            vpc_id=config.vpc_id,
+            service_tag=config.service_tag,
+            profile=config.profile,
+            region=region or config.region,
+        )
+
+    async def refresh_region(
+        region: Optional[str],
+        provider: Optional[str] = None,
+    ) -> CachedState:
+        effective_provider = provider or config.provider or "aws"
+        state = _get_state(effective_provider, region)
+        try:
+            discovery = await _discover(effective_provider, region)
             graph = mark_orphaned_edges(build_graph(discovery))
             state.graph = graph
             state.cytoscape = export_cytoscape_json(graph, region=discovery.region)
             diag_dict = diagnose(graph).to_dict()
             diag_dict["region"] = discovery.region  # lets the WS client filter by region
+            diag_dict["provider"] = effective_provider  # lets the WS client filter by provider
             state.diagnosis = diag_dict
             state.last_refresh = datetime.utcnow()
             state.error = None
-            # Only broadcast to WS clients for the primary/default region.
-            if region is None or region == config.region:
+            # Only broadcast to WS clients for the primary/default provider+region.
+            primary_provider = config.provider or "aws"
+            if (effective_provider == primary_provider) and (region is None or region == config.region):
                 await hub.broadcast({"type": "graph", "graph": state.cytoscape})
                 await hub.broadcast({"type": "diagnosis", "diagnosis": state.diagnosis})
         except Exception as exc:  # noqa: BLE001
@@ -165,6 +196,19 @@ def create_app(config: ServerConfig):  # type: ignore[no-untyped-def]
                 pass
 
     app = FastAPI(title="sudiviz", lifespan=lifespan)
+
+    # Starlette ≥1.0 rejects WebSocket upgrades whose Origin does not match the
+    # server host.  Adding CORSMiddleware with a permissive local-dev policy
+    # fixes the 403 errors browsers see on /ws.
+    from starlette.middleware.cors import CORSMiddleware
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
     app.mount("/static", StaticFiles(directory=str(TEMPLATE_DIR)), name="static")
 
     @app.get("/")
@@ -172,30 +216,36 @@ def create_app(config: ServerConfig):  # type: ignore[no-untyped-def]
         return HTMLResponse(_INDEX_HTML)
 
     @app.get("/graph")
-    async def graph_endpoint(region: Optional[str] = None) -> JSONResponse:
-        state = _get_state(region)
+    async def graph_endpoint(
+        region: Optional[str] = None,
+        provider: Optional[str] = None,
+    ) -> JSONResponse:
+        state = _get_state(provider, region)
         if state.error:
             return JSONResponse({"error": state.error}, status_code=503)
         if not state.cytoscape:
-            state = await refresh_region(region)
+            state = await refresh_region(region, provider)
         if state.error:
             return JSONResponse({"error": state.error}, status_code=503)
         return JSONResponse(state.cytoscape)
 
     @app.get("/diagnose")
-    async def diagnose_endpoint(region: Optional[str] = None) -> JSONResponse:
-        state = _get_state(region)
+    async def diagnose_endpoint(
+        region: Optional[str] = None,
+        provider: Optional[str] = None,
+    ) -> JSONResponse:
+        state = _get_state(provider, region)
         if state.error:
             return JSONResponse({"error": state.error}, status_code=503)
         if not state.diagnosis:
-            state = await refresh_region(region)
+            state = await refresh_region(region, provider)
         if state.error:
             return JSONResponse({"error": state.error}, status_code=503)
         return JSONResponse(state.diagnosis)
 
     @app.get("/healthz")
     async def healthz() -> JSONResponse:
-        primary = _get_state(None)
+        primary = _get_state()
         return JSONResponse(
             {
                 "ok": primary.error is None,
@@ -207,7 +257,7 @@ def create_app(config: ServerConfig):  # type: ignore[no-untyped-def]
     @app.websocket("/ws")
     async def ws_endpoint(ws: WebSocket) -> None:
         await hub.connect(ws)
-        primary = _get_state(None)
+        primary = _get_state()
         if primary.cytoscape:
             await ws.send_text(json.dumps({"type": "graph", "graph": primary.cytoscape}, default=str))
         if primary.diagnosis:

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sudiviz"
-version = "1.8.0"
+version = "1.9.0"
 description = "Sufficient visibility into cloud infrastructure failures — live AWS topology + Terraform drift in one CLI."
 readme = "README.md"
 license = { text = "GPL-3.0-or-later" }
@@ -52,6 +52,14 @@ terraform = [
 mcp = [
     "mcp>=1.0",
 ]
+gcp = [
+    "google-cloud-compute>=1.15.0",
+    "google-cloud-container>=2.30.0",
+    "google-cloud-storage>=2.14.0",
+    "google-cloud-resource-manager>=1.11.0",
+    "google-cloud-functions>=1.13.0",
+    "google-api-python-client>=2.100.0",
+]
 all = [
     "textual>=0.50.0",
     "fastapi>=0.115.0",
@@ -60,6 +68,12 @@ all = [
     "diagrams>=0.23",
     "python-terraform>=0.10",
     "mcp>=1.0",
+    "google-cloud-compute>=1.15.0",
+    "google-cloud-container>=2.30.0",
+    "google-cloud-storage>=2.14.0",
+    "google-cloud-resource-manager>=1.11.0",
+    "google-cloud-functions>=1.13.0",
+    "google-api-python-client>=2.100.0",
 ]
 dev = [
     "pytest>=8.0",

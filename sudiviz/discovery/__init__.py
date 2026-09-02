@@ -24,3 +24,11 @@ __all__ = [
     "Target",
     "TargetGroup",
 ]
+
+# GCP discovery is optional — only importable when google-cloud SDKs are installed.
+try:
+    from sudiviz.discovery.gcp import discover_all_gcp  # noqa: F401
+
+    __all__.append("discover_all_gcp")
+except ImportError:
+    pass

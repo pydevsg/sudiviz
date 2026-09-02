@@ -32,6 +32,7 @@ from mcp.types import (
 
 from sudiviz.discovery.aws import discover_all
 from sudiviz.discovery.costs import calculate_total_costs
+from sudiviz.discovery.models import CloudProvider
 from sudiviz.graph.analyzer import diagnose as run_diagnosis, mark_orphaned_edges
 from sudiviz.graph.builder import build_graph
 from sudiviz.graph.visualizer import export_cytoscape_json, serialize_graph
@@ -46,27 +47,38 @@ TOOLS = [
     Tool(
         name="sudiviz_discover",
         description=(
-            "Discover live AWS infrastructure resources. Returns ALBs, target groups, "
-            "EC2 instances, security groups, ECS, EKS, RDS, Aurora, Lambda, and S3 buckets."
+            "Discover live cloud infrastructure resources (AWS or GCP). Returns load balancers, "
+            "target groups, instances, security groups/firewall rules, container clusters, "
+            "databases, serverless functions, and storage buckets."
         ),
         inputSchema={
             "type": "object",
             "properties": {
+                "provider": {
+                    "type": "string",
+                    "description": "Cloud provider: 'aws' (default) or 'gcp'.",
+                    "enum": ["aws", "gcp"],
+                    "default": "aws",
+                },
                 "region": {
                     "type": "string",
-                    "description": "AWS region (e.g. us-east-1). Uses default if omitted.",
+                    "description": "Cloud region (e.g. us-east-1 for AWS, us-central1 for GCP).",
                 },
                 "vpc_id": {
                     "type": "string",
-                    "description": "Filter to a specific VPC.",
+                    "description": "Filter to a specific VPC (AWS) or VPC network (GCP).",
                 },
                 "service_tag": {
                     "type": "string",
-                    "description": "Tag filter, e.g. 'Service=checkout' or 'k=v,k2=v2'.",
+                    "description": "Tag/label filter, e.g. 'Service=checkout' or 'k=v,k2=v2'.",
                 },
                 "profile": {
                     "type": "string",
-                    "description": "AWS profile name from ~/.aws/credentials.",
+                    "description": "AWS profile name from ~/.aws/credentials (AWS only).",
+                },
+                "project": {
+                    "type": "string",
+                    "description": "GCP project ID (GCP only). Resolved from env/ADC if omitted.",
                 },
             },
         },
@@ -74,20 +86,26 @@ TOOLS = [
     Tool(
         name="sudiviz_diagnose",
         description=(
-            "Discover AWS infrastructure and analyze for issues: orphan resources, "
-            "unhealthy targets, security group misconfigurations, insecure S3 buckets, "
+            "Discover cloud infrastructure (AWS or GCP) and analyze for issues: orphan resources, "
+            "unhealthy targets, security group misconfigurations, insecure storage, "
             "and more. Returns a structured diagnosis with prioritized fixes."
         ),
         inputSchema={
             "type": "object",
             "properties": {
+                "provider": {
+                    "type": "string",
+                    "description": "Cloud provider: 'aws' (default) or 'gcp'.",
+                    "enum": ["aws", "gcp"],
+                    "default": "aws",
+                },
                 "region": {
                     "type": "string",
-                    "description": "AWS region (e.g. us-east-1). Uses default if omitted.",
+                    "description": "Cloud region. Uses default if omitted.",
                 },
                 "vpc_id": {
                     "type": "string",
-                    "description": "Filter to a specific VPC.",
+                    "description": "Filter to a specific VPC/network.",
                 },
                 "service_tag": {
                     "type": "string",
@@ -95,7 +113,11 @@ TOOLS = [
                 },
                 "profile": {
                     "type": "string",
-                    "description": "AWS profile name.",
+                    "description": "AWS profile name (AWS only).",
+                },
+                "project": {
+                    "type": "string",
+                    "description": "GCP project ID (GCP only).",
                 },
             },
         },
@@ -103,19 +125,25 @@ TOOLS = [
     Tool(
         name="sudiviz_graph",
         description=(
-            "Generate the infrastructure topology graph. Returns Cytoscape-compatible "
+            "Generate the infrastructure topology graph (AWS or GCP). Returns Cytoscape-compatible "
             "JSON with nodes (resources) and edges (relationships) for visualization."
         ),
         inputSchema={
             "type": "object",
             "properties": {
+                "provider": {
+                    "type": "string",
+                    "description": "Cloud provider: 'aws' (default) or 'gcp'.",
+                    "enum": ["aws", "gcp"],
+                    "default": "aws",
+                },
                 "region": {
                     "type": "string",
-                    "description": "AWS region. Uses default if omitted.",
+                    "description": "Cloud region. Uses default if omitted.",
                 },
                 "vpc_id": {
                     "type": "string",
-                    "description": "Filter to a specific VPC.",
+                    "description": "Filter to a specific VPC/network.",
                 },
                 "service_tag": {
                     "type": "string",
@@ -123,7 +151,11 @@ TOOLS = [
                 },
                 "profile": {
                     "type": "string",
-                    "description": "AWS profile name.",
+                    "description": "AWS profile name (AWS only).",
+                },
+                "project": {
+                    "type": "string",
+                    "description": "GCP project ID (GCP only).",
                 },
             },
         },
@@ -132,23 +164,33 @@ TOOLS = [
         name="sudiviz_fix",
         description=(
             "Generate remediation commands for diagnosed infrastructure issues. "
-            "Returns AWS CLI commands that would fix each issue. "
+            "Returns CLI commands that would fix each issue. "
             "Set dry_run=false to apply fixes (requires write permissions)."
         ),
         inputSchema={
             "type": "object",
             "properties": {
+                "provider": {
+                    "type": "string",
+                    "description": "Cloud provider: 'aws' (default) or 'gcp'.",
+                    "enum": ["aws", "gcp"],
+                    "default": "aws",
+                },
                 "region": {
                     "type": "string",
-                    "description": "AWS region. Uses default if omitted.",
+                    "description": "Cloud region. Uses default if omitted.",
                 },
                 "vpc_id": {
                     "type": "string",
-                    "description": "Filter to a specific VPC.",
+                    "description": "Filter to a specific VPC/network.",
                 },
                 "profile": {
                     "type": "string",
-                    "description": "AWS profile name.",
+                    "description": "AWS profile name (AWS only).",
+                },
+                "project": {
+                    "type": "string",
+                    "description": "GCP project ID (GCP only).",
                 },
                 "dry_run": {
                     "type": "boolean",
@@ -175,17 +217,27 @@ TOOLS = [
                     "type": "string",
                     "description": "Path to the terraform state JSON file.",
                 },
+                "provider": {
+                    "type": "string",
+                    "description": "Cloud provider: 'aws' (default) or 'gcp'.",
+                    "enum": ["aws", "gcp"],
+                    "default": "aws",
+                },
                 "region": {
                     "type": "string",
-                    "description": "AWS region. Uses default if omitted.",
+                    "description": "Cloud region. Uses default if omitted.",
                 },
                 "vpc_id": {
                     "type": "string",
-                    "description": "Filter to a specific VPC.",
+                    "description": "Filter to a specific VPC/network.",
                 },
                 "profile": {
                     "type": "string",
-                    "description": "AWS profile name.",
+                    "description": "AWS profile name (AWS only).",
+                },
+                "project": {
+                    "type": "string",
+                    "description": "GCP project ID (GCP only).",
                 },
             },
             "required": ["tfstate_path"],
@@ -194,23 +246,33 @@ TOOLS = [
     Tool(
         name="sudiviz_costs",
         description=(
-            "Estimate monthly costs for discovered AWS resources. "
+            "Estimate monthly costs for discovered cloud resources (AWS or GCP). "
             "Returns cost breakdown by service and by individual resource."
         ),
         inputSchema={
             "type": "object",
             "properties": {
+                "provider": {
+                    "type": "string",
+                    "description": "Cloud provider: 'aws' (default) or 'gcp'.",
+                    "enum": ["aws", "gcp"],
+                    "default": "aws",
+                },
                 "region": {
                     "type": "string",
-                    "description": "AWS region. Uses default if omitted.",
+                    "description": "Cloud region. Uses default if omitted.",
                 },
                 "vpc_id": {
                     "type": "string",
-                    "description": "Filter to a specific VPC.",
+                    "description": "Filter to a specific VPC/network.",
                 },
                 "profile": {
                     "type": "string",
-                    "description": "AWS profile name.",
+                    "description": "AWS profile name (AWS only).",
+                },
+                "project": {
+                    "type": "string",
+                    "description": "GCP project ID (GCP only).",
                 },
             },
         },
@@ -218,7 +280,7 @@ TOOLS = [
     Tool(
         name="sudiviz_list_resources",
         description=(
-            "List discovered resources of a specific type. "
+            "List discovered resources of a specific type (AWS or GCP). "
             "Valid kinds: alb, target_group, instance, security_group, "
             "ecs_cluster, eks_cluster, rds, aurora, lambda, s3."
         ),
@@ -233,17 +295,27 @@ TOOLS = [
                         "ecs_cluster", "eks_cluster", "rds", "aurora", "lambda", "s3",
                     ],
                 },
+                "provider": {
+                    "type": "string",
+                    "description": "Cloud provider: 'aws' (default) or 'gcp'.",
+                    "enum": ["aws", "gcp"],
+                    "default": "aws",
+                },
                 "region": {
                     "type": "string",
-                    "description": "AWS region. Uses default if omitted.",
+                    "description": "Cloud region. Uses default if omitted.",
                 },
                 "vpc_id": {
                     "type": "string",
-                    "description": "Filter to a specific VPC.",
+                    "description": "Filter to a specific VPC/network.",
                 },
                 "profile": {
                     "type": "string",
-                    "description": "AWS profile name.",
+                    "description": "AWS profile name (AWS only).",
+                },
+                "project": {
+                    "type": "string",
+                    "description": "GCP project ID (GCP only).",
                 },
             },
             "required": ["kind"],
@@ -253,6 +325,20 @@ TOOLS = [
 
 
 async def _run_discovery(arguments: dict[str, Any]):
+    provider = arguments.get("provider", "aws")
+    if provider == "gcp":
+        try:
+            from sudiviz.discovery.gcp import discover_all_gcp
+        except ImportError as exc:
+            raise RuntimeError(
+                "GCP SDK not installed. Install with: pip install sudiviz[gcp]"
+            ) from exc
+        return await discover_all_gcp(
+            project=arguments.get("project"),
+            region=arguments.get("region"),
+            vpc_network=arguments.get("vpc_id"),
+            service_tag=arguments.get("service_tag"),
+        )
     return await discover_all(
         region=arguments.get("region"),
         vpc_id=arguments.get("vpc_id"),
@@ -611,7 +697,12 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
 
     elif name == "sudiviz_costs":
         result = await _run_discovery(arguments)
-        costs = calculate_total_costs(result)
+        provider = arguments.get("provider", "aws")
+        if provider == "gcp":
+            from sudiviz.discovery.gcp_costs import calculate_gcp_total_costs
+            costs = calculate_gcp_total_costs(result)
+        else:
+            costs = calculate_total_costs(result)
         return [TextContent(type="text", text=json.dumps(costs, indent=2, default=str))]
 
     elif name == "sudiviz_list_resources":

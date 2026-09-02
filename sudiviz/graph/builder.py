@@ -38,6 +38,8 @@ def build_graph(discovery: DiscoveryResult) -> nx.DiGraph:
     """Build a directed graph encoding the discovered topology."""
     g: nx.DiGraph = nx.DiGraph()
     g.graph["account_id"] = discovery.account_id
+    g.graph["project_id"] = discovery.project_id
+    g.graph["provider"] = discovery.provider.value
     g.graph["region"] = discovery.region
     g.graph["vpc_id"] = discovery.vpc_id
     g.graph["discovered_at"] = discovery.discovered_at.isoformat()

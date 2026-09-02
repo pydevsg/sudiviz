@@ -1,5 +1,10 @@
 [
   {
+    "version": "v1.9.0",
+    "date": "2026-09-02",
+    "summary": "GCP infra with sudiviz realtime"
+  },
+  {
     "version": "v1.8.0",
     "date": "2026-08-18",
     "summary": "sudiviz now available in Go"

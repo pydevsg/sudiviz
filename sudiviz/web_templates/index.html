@@ -31,7 +31,11 @@
         <option value="cost">Color: Cost ($)</option>
         <option value="security">Color: Security</option>
       </select>
-      <select id="regionSelect" title="Switch AWS region">
+      <select id="providerSelect" title="Switch cloud provider">
+        <option value="aws">AWS</option>
+        <option value="gcp">GCP</option>
+      </select>
+      <select id="regionSelect" title="Switch region">
         <option value="us-east-1">us-east-1</option>
         <option value="us-east-2">us-east-2</option>
         <option value="us-west-1">us-west-1</option>
@@ -114,7 +118,7 @@
           </ul>
           <p id="total-cost" style="font-size:0.85em;font-weight:600;margin-top:8px;color:var(--text)"></p>
         </div>
-        <p style="font-size:0.75em;color:#6b7280;margin-top:4px">Ctrl+click a node to open AWS Console</p>
+        <p style="font-size:0.75em;color:#6b7280;margin-top:4px" id="console-hint">Ctrl+click a node to open AWS Console</p>
       </div>
 
       <div class="panel" id="details">
@@ -146,6 +150,83 @@
     let lastGraph = null;
     let ws = null;
     let orphanMode = false;
+
+    // AWS and GCP region lists.
+    const awsRegions = [
+      'us-east-1', 'us-east-2', 'us-west-1', 'us-west-2',
+      'eu-west-1', 'eu-west-2', 'eu-central-1',
+      'ap-southeast-1', 'ap-northeast-1',
+    ];
+    const gcpRegions = [
+      'us-central1', 'us-east1', 'us-east4', 'us-west1', 'us-west2',
+      'europe-west1', 'europe-west2', 'europe-west3', 'europe-north1',
+      'asia-east1', 'asia-east2', 'asia-northeast1', 'asia-southeast1',
+      'australia-southeast1', 'southamerica-east1',
+    ];
+
+    // GCP node type label overrides for the legend.
+    const gcpLabelMap = {
+      eks_cluster: 'GKE Cluster',
+      eks_nodegroup: 'GKE Node Pool',
+      alb: 'Cloud LB',
+      target_group: 'Instance Group',
+      instance: 'GCE Instance',
+      security_group: 'Firewall Rule',
+      rds: 'Cloud SQL',
+      lambda: 'Cloud Function',
+      s3: 'Cloud Storage',
+    };
+
+    function activeProvider() {
+      return document.getElementById('providerSelect').value;
+    }
+
+    function populateRegions(provider) {
+      const sel = document.getElementById('regionSelect');
+      const regions = provider === 'gcp' ? gcpRegions : awsRegions;
+      sel.innerHTML = '';
+      regions.forEach(r => sel.add(new Option(r, r)));
+    }
+
+    function updateProviderUI(provider) {
+      // Update the console hint text.
+      const hint = document.getElementById('console-hint');
+      hint.textContent = provider === 'gcp'
+        ? 'Ctrl+click a node to open GCP Cloud Console'
+        : 'Ctrl+click a node to open AWS Console';
+
+      // Update legend labels based on provider.
+      if (provider === 'gcp') {
+        document.querySelectorAll('#legend-default ul:last-child li').forEach(li => {
+          const img = li.querySelector('img');
+          if (img) {
+            const src = img.getAttribute('src') || '';
+            // Find which kind this icon is for.
+            Object.keys(gcpLabelMap).forEach(kind => {
+              if (src.includes('ICON_IMG_' + kind) || li.textContent.trim().toLowerCase().includes(kind.replace('_', ' '))) {
+                li.childNodes[li.childNodes.length - 1].textContent = ' ' + gcpLabelMap[kind];
+              }
+            });
+          }
+        });
+      }
+    }
+
+    // Provider change handler.
+    document.getElementById('providerSelect').addEventListener('change', () => {
+      const provider = activeProvider();
+      populateRegions(provider);
+      updateProviderUI(provider);
+      if (cy) { cy.batch(() => cy.elements().remove()); }
+      // Immediately reset meta bar to reflect the new provider before fetch completes.
+      const region = activeRegion();
+      document.getElementById('meta-account').textContent = provider === 'gcp' ? 'project: …' : 'account: …';
+      document.getElementById('meta-region').textContent  = `region: ${region}`;
+      document.getElementById('meta-vpc').textContent     = provider === 'gcp' ? 'network: …' : 'vpc: …';
+      document.getElementById('meta-time').textContent    = 'loading…';
+      hideEmptyState();
+      fetchGraph();
+    });
 
     function buildCy(elements) {
       cy = cytoscape({
@@ -401,17 +482,28 @@
     }
 
     function updateMeta(meta) {
-      document.getElementById('meta-account').textContent = `account: ${meta.account_id || '—'}`;
+      const provider = meta.provider || activeProvider();
+      if (provider === 'gcp') {
+        document.getElementById('meta-account').textContent = `project: ${meta.project_id || '—'}`;
+      } else {
+        document.getElementById('meta-account').textContent = `account: ${meta.account_id || '—'}`;
+      }
       document.getElementById('meta-region').textContent  = `region: ${meta.region || '—'}`;
-      document.getElementById('meta-vpc').textContent     = `vpc: ${meta.vpc_id || '—'}`;
+      document.getElementById('meta-vpc').textContent     = provider === 'gcp'
+        ? `network: ${meta.vpc_id || '—'}`
+        : `vpc: ${meta.vpc_id || '—'}`;
       document.getElementById('meta-time').textContent    = `last update: ${new Date().toLocaleTimeString()}`;
-      // Keep dropdown in sync with actual region returned from server
+      // Keep dropdown in sync with actual region returned from server.
       if (meta.region) {
         const sel = document.getElementById('regionSelect');
         if (![...sel.options].some(o => o.value === meta.region)) {
           sel.add(new Option(meta.region, meta.region));
         }
         sel.value = meta.region;
+      }
+      // Keep provider dropdown in sync.
+      if (meta.provider) {
+        document.getElementById('providerSelect').value = meta.provider;
       }
     }
 
@@ -430,7 +522,8 @@
 
     async function fetchGraph() {
       const region = activeRegion();
-      const qs = `?region=${encodeURIComponent(region)}`;
+      const provider = activeProvider();
+      const qs = `?region=${encodeURIComponent(region)}&provider=${encodeURIComponent(provider)}`;
       try {
         const [gRes, dRes] = await Promise.all([
           fetch(`/graph${qs}`),
@@ -450,7 +543,7 @@
           showEmptyState(`No resources found in ${region}.`);
           if (cy) { cy.batch(() => cy.elements().remove()); }
           renderFixes([]);
-          updateMeta({ ...(graph.meta || {}), region });
+          updateMeta({ ...(graph.meta || {}), region, provider });
           return;
         }
         hideEmptyState();
@@ -463,7 +556,7 @@
         }
         applyOrphanFilter();
         renderFixes(diag.fixes || []);
-        updateMeta(graph.meta || {});
+        updateMeta({ ...(graph.meta || {}), provider });
       } catch (err) {
         console.error('fetchGraph failed', err);
         showEmptyState(`Failed to load ${region} — check network.`);
@@ -492,8 +585,10 @@
         ws.onmessage = (msg) => {
           try {
             const payload = JSON.parse(msg.data);
-            // WS broadcasts are always for the primary (server-startup) region.
-            // Only apply them if the user hasn't switched to a different region.
+            // WS broadcasts are always for the primary (server-startup) provider+region.
+            // Only apply them if the user hasn't switched to a different provider or region.
+            const wsProvider = payload.graph?.meta?.provider || payload.diagnosis?.provider;
+            if (wsProvider && wsProvider !== activeProvider()) return;
             const wsRegion = (payload.graph?.meta?.region) || (payload.diagnosis?.region);
             if (wsRegion && wsRegion !== activeRegion()) return;
             if (payload.type === 'graph') {
@@ -524,10 +619,15 @@
       applyOrphanFilter();
     });
     document.getElementById('logsBtn').addEventListener('click', () => {
-      // Open CloudWatch Logs for the current region
+      const provider = activeProvider();
       const region = (document.getElementById('meta-region').textContent || '').replace('region: ', '').trim() || 'us-east-1';
-      const logsUrl = `https://${region}.console.aws.amazon.com/cloudwatch/home?region=${region}#logsV2:log-groups`;
-      window.open(logsUrl, '_blank');
+      if (provider === 'gcp') {
+        const logsUrl = `https://console.cloud.google.com/logs/query?project=_`;
+        window.open(logsUrl, '_blank');
+      } else {
+        const logsUrl = `https://${region}.console.aws.amazon.com/cloudwatch/home?region=${region}#logsV2:log-groups`;
+        window.open(logsUrl, '_blank');
+      }
     });
 
     // Auto-refresh every 30s; cheap because the server caches discovery.

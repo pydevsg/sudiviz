@@ -47,6 +47,8 @@ def export_cytoscape_json(
     `style` overrides handle the edge-specific dashed/red rendering.
     """
     region = region or graph.graph.get("region", "us-east-1")
+    provider = graph.graph.get("provider", "aws")
+    project_id = graph.graph.get("project_id")
     nodes: list[dict] = []
     edges: list[dict] = []
 
@@ -60,6 +62,23 @@ def export_cytoscape_json(
         monthly_cost = attrs.get("monthly_cost", 0)
         cost_display = format_cost(monthly_cost) if monthly_cost else None
 
+        # Build console/pricing URLs — dispatch by provider.
+        node_console_url = console_url(
+            kind, attrs.get("id", node_id), region,
+            provider=provider, project=project_id,
+        )
+        node_pricing_url = pricing_url(kind, attrs.get("metadata", {}), provider=provider)
+
+        # CloudWatch URLs only apply to AWS.
+        node_metrics_url = (
+            cloudwatch_metrics_url(kind, attrs.get("id", node_id), region)
+            if provider == "aws" else None
+        )
+        node_logs_url = (
+            cloudwatch_logs_url(kind, attrs.get("id", node_id), region)
+            if provider == "aws" else None
+        )
+
         nodes.append(
             {
                 "data": {
@@ -70,10 +89,10 @@ def export_cytoscape_json(
                     "orphan": is_orphan,
                     "monthly_cost": monthly_cost,
                     "cost_display": cost_display,
-                    "console_url": console_url(kind, attrs.get("id", node_id), region),
-                    "pricing_url": pricing_url(kind, attrs.get("metadata", {})),
-                    "metrics_url": cloudwatch_metrics_url(kind, attrs.get("id", node_id), region),
-                    "logs_url": cloudwatch_logs_url(kind, attrs.get("id", node_id), region),
+                    "console_url": node_console_url,
+                    "pricing_url": node_pricing_url,
+                    "metrics_url": node_metrics_url,
+                    "logs_url": node_logs_url,
                     "metadata": attrs.get("metadata", {}),
                 },
                 "classes": classes,
@@ -137,7 +156,9 @@ def export_cytoscape_json(
         "nodes": nodes,
         "edges": edges,
         "meta": {
+            "provider": provider,
             "account_id": graph.graph.get("account_id"),
+            "project_id": graph.graph.get("project_id"),
             "region": region,
             "vpc_id": graph.graph.get("vpc_id"),
             "discovered_at": graph.graph.get("discovered_at"),

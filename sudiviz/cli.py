@@ -29,6 +29,7 @@ import typer
 from rich.console import Console
 
 from sudiviz.discovery.aws import discover_all
+from sudiviz.discovery.models import CloudProvider
 from sudiviz.discovery.terraform import detect_drift, load_state, parse_intended_resources
 from sudiviz.graph.analyzer import diagnose as run_diagnosis, mark_orphaned_edges
 from sudiviz.graph.builder import build_graph
@@ -59,6 +60,38 @@ def _setup_logging(verbose: bool) -> None:
     )
 
 
+async def _run_discovery(
+    provider: str,
+    vpc_id: Optional[str] = None,
+    service_tag: Optional[str] = None,
+    profile: Optional[str] = None,
+    region: Optional[str] = None,
+    project: Optional[str] = None,
+):
+    """Dispatch discovery to the correct provider."""
+    if provider == "gcp":
+        try:
+            from sudiviz.discovery.gcp import discover_all_gcp
+        except ImportError:
+            console.print(
+                "[red]GCP SDK not installed.[/red] Install with:\n"
+                "  [dim]pip install sudiviz[gcp][/dim]"
+            )
+            raise typer.Exit(1)
+        return await discover_all_gcp(
+            project=project,
+            region=region,
+            vpc_network=vpc_id,
+            service_tag=service_tag,
+        )
+    return await discover_all(
+        vpc_id=vpc_id,
+        service_tag=service_tag,
+        profile=profile,
+        region=region,
+    )
+
+
 # ---------------------------------------------------------------------------
 # diagnose
 # ---------------------------------------------------------------------------
@@ -66,12 +99,14 @@ def _setup_logging(verbose: bool) -> None:
 
 @app.command()
 def diagnose(
-    vpc_id: Optional[str] = typer.Option(None, "--vpc-id", help="Filter discovery to one VPC"),
+    vpc_id: Optional[str] = typer.Option(None, "--vpc-id", help="Filter discovery to one VPC / GCP network"),
     service_tag: Optional[str] = typer.Option(
         None, "--service-tag", help="Tag filter, e.g. 'Service=checkout' or 'k=v,k2=v2'"
     ),
     profile: Optional[str] = typer.Option(None, "--profile", help="AWS profile to use"),
-    region: Optional[str] = typer.Option(None, "--region", help="AWS region override"),
+    region: Optional[str] = typer.Option(None, "--region", help="Cloud region override"),
+    provider: str = typer.Option("aws", "--provider", help="Cloud provider: aws | gcp"),
+    project: Optional[str] = typer.Option(None, "--project", help="GCP project ID"),
     show_unattached: bool = typer.Option(
         False, "--show-unattached", help="Include orphan resources in output"
     ),
@@ -85,7 +120,7 @@ def diagnose(
     """Run live discovery + analysis and print a colored topology + fixes."""
     _setup_logging(verbose)
     discovery = asyncio.run(
-        discover_all(vpc_id=vpc_id, service_tag=service_tag, profile=profile, region=region)
+        _run_discovery(provider, vpc_id=vpc_id, service_tag=service_tag, profile=profile, region=region, project=project)
     )
     graph = build_graph(discovery)
     if highlight_orphans or show_unattached:
@@ -129,7 +164,9 @@ def explain(
         None, "--service-tag", help="Tag filter, e.g. 'Service=checkout' or 'k=v,k2=v2'"
     ),
     profile: Optional[str] = typer.Option(None, "--profile", help="AWS profile to use"),
-    region: Optional[str] = typer.Option(None, "--region", help="AWS region override"),
+    region: Optional[str] = typer.Option(None, "--region", help="Cloud region override"),
+    provider: str = typer.Option("aws", "--provider", help="Cloud provider: aws | gcp"),
+    project: Optional[str] = typer.Option(None, "--project", help="GCP project ID"),
     verbose: bool = typer.Option(False, "-v", "--verbose"),
 ) -> None:
     """AI-powered analysis of diagnostic findings using Amazon Bedrock (Nova Lite).
@@ -159,7 +196,7 @@ def explain(
 
     console.print("[cyan]Running diagnostic engine…[/cyan]")
     discovery = asyncio.run(
-        discover_all(vpc_id=vpc_id, service_tag=service_tag, profile=profile, region=region)
+        _run_discovery(provider, vpc_id=vpc_id, service_tag=service_tag, profile=profile, region=region, project=project)
     )
     graph = mark_orphaned_edges(build_graph(discovery))
     diag = run_diagnosis(graph)
@@ -257,7 +294,9 @@ def fix(
     vpc_id: Optional[str] = typer.Option(None, "--vpc-id", help="Filter discovery to one VPC"),
     service_tag: Optional[str] = typer.Option(None, "--service-tag", help="Tag filter"),
     profile: Optional[str] = typer.Option(None, "--profile", help="AWS profile to use"),
-    region: Optional[str] = typer.Option(None, "--region", help="AWS region override"),
+    region: Optional[str] = typer.Option(None, "--region", help="Cloud region override"),
+    provider: str = typer.Option("aws", "--provider", help="Cloud provider: aws | gcp"),
+    project: Optional[str] = typer.Option(None, "--project", help="GCP project ID"),
     json_output: bool = typer.Option(False, "--json", help="Output as JSON"),
     verbose: bool = typer.Option(False, "-v", "--verbose"),
 ) -> None:
@@ -278,7 +317,7 @@ def fix(
 
     # Run discovery and diagnosis
     discovery = asyncio.run(
-        discover_all(vpc_id=vpc_id, service_tag=service_tag, profile=profile, region=region)
+        _run_discovery(provider, vpc_id=vpc_id, service_tag=service_tag, profile=profile, region=region, project=project)
     )
     graph = mark_orphaned_edges(build_graph(discovery))
     diag = run_diagnosis(graph)
@@ -443,17 +482,19 @@ def drift(
     vpc_id: Optional[str] = typer.Option(None, "--vpc-id"),
     profile: Optional[str] = typer.Option(None, "--profile"),
     region: Optional[str] = typer.Option(None, "--region"),
+    provider: str = typer.Option("aws", "--provider", help="Cloud provider: aws | gcp"),
+    project: Optional[str] = typer.Option(None, "--project", help="GCP project ID"),
     json_output: bool = typer.Option(False, "--json"),
     verbose: bool = typer.Option(False, "-v", "--verbose"),
 ) -> None:
-    """Compare Terraform state against live AWS and report drift."""
+    """Compare Terraform state against live cloud infrastructure and report drift."""
     _setup_logging(verbose)
     if not tfstate.exists():
         typer.echo(f"tfstate file not found: {tfstate}", err=True)
         raise typer.Exit(1)
 
     intended = parse_intended_resources(load_state(tfstate))
-    live = asyncio.run(discover_all(vpc_id=vpc_id, profile=profile, region=region))
+    live = asyncio.run(_run_discovery(provider, vpc_id=vpc_id, profile=profile, region=region, project=project))
     findings = detect_drift(intended, live)
 
     if json_output:
@@ -493,6 +534,8 @@ def graph(
     service_tag: Optional[str] = typer.Option(None, "--service-tag"),
     profile: Optional[str] = typer.Option(None, "--profile"),
     region: Optional[str] = typer.Option(None, "--region"),
+    provider: str = typer.Option("aws", "--provider", help="Cloud provider: aws | gcp"),
+    project: Optional[str] = typer.Option(None, "--project", help="GCP project ID"),
     refresh_interval: float = typer.Option(30.0, "--refresh-interval"),
     verbose: bool = typer.Option(False, "-v", "--verbose"),
 ) -> None:
@@ -509,6 +552,8 @@ def graph(
             service_tag=service_tag,
             profile=profile,
             region=region,
+            provider=provider,
+            project=project,
             refresh_interval=refresh_interval,
         )
         url = f"http://{host}:{port}"
@@ -519,7 +564,7 @@ def graph(
         return
 
     discovery = asyncio.run(
-        discover_all(vpc_id=vpc_id, service_tag=service_tag, profile=profile, region=region)
+        _run_discovery(provider, vpc_id=vpc_id, service_tag=service_tag, profile=profile, region=region, project=project)
     )
     g = mark_orphaned_edges(build_graph(discovery))
 
@@ -579,6 +624,8 @@ def watch(
     service_tag: Optional[str] = typer.Option(None, "--service-tag"),
     profile: Optional[str] = typer.Option(None, "--profile"),
     region: Optional[str] = typer.Option(None, "--region"),
+    provider: str = typer.Option("aws", "--provider", help="Cloud provider: aws | gcp"),
+    project: Optional[str] = typer.Option(None, "--project", help="GCP project ID"),
     verbose: bool = typer.Option(False, "-v", "--verbose"),
 ) -> None:
     """Continuous monitoring mode — re-runs discovery every --interval seconds."""
@@ -588,7 +635,7 @@ def watch(
         os.system("clear" if os.name != "nt" else "cls")  # noqa: S605 — single literal
         try:
             discovery = asyncio.run(
-                discover_all(vpc_id=vpc_id, service_tag=service_tag, profile=profile, region=region)
+                _run_discovery(provider, vpc_id=vpc_id, service_tag=service_tag, profile=profile, region=region, project=project)
             )
             graph = mark_orphaned_edges(build_graph(discovery))
             render_terminal(graph, console)

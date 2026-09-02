@@ -324,6 +324,7 @@ class DiscoveryResult(_Base):
 
     provider: CloudProvider = CloudProvider.AWS
     account_id: Optional[str] = None
+    project_id: Optional[str] = None  # GCP project ID (AWS uses account_id)
     region: Optional[str] = None
     vpc_id: Optional[str] = None
     discovered_at: datetime = Field(default_factory=datetime.utcnow)
