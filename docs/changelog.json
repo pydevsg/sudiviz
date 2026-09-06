@@ -1,5 +1,10 @@
 [
   {
+    "version": "v1.9.0",
+    "date": "2026-09-02",
+    "summary": "GCP infra with sudiviz Realtime"
+  },
+  {
     "version": "v1.8.0",
     "date": "2026-08-18",
     "summary": "sudiviz now available in Go"
@@ -68,10 +73,5 @@
     "version": "v1.4.2",
     "date": "2026-06-14",
     "summary": "sync branding version, anchor PyPI release in git"
-  },
-  {
-    "version": "v1.4.1",
-    "date": "2026-06-14",
-    "summary": "Dynamic landing page, live refresh fix, GitHub Pages"
   }
 ]
